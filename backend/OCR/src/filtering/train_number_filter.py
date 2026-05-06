@@ -1,7 +1,7 @@
 import re
 
-# Indian train numbers are exactly 5 digits
-TRAIN_PATTERN = re.compile(r"^\d{5}$")
+# Indian train numbers are 5 or 6 digits
+TRAIN_PATTERN = re.compile(r"^\d{5,6}$")
 
 # Minimum OCR confidence to accept a candidate
 CONFIDENCE_THRESHOLD = 0.85
