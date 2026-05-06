@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 18
+names: ['Corrosion-induced_perforation', 'acod_leak', 'air_tank', 'auxilliary_reservoir', 'battery_box', 'busted', 'crack', 'deformed', 'footboard', 'leakage', 'missing_bolt', 'missing_part', 'pipes', 'primary_coil_spring', 'puncture', 'regulator', 'rust', 'transformer']
+
+roboflow:
+  workspace: ananyas-workspace-k0yhi
+  project: ananyas-workspace-k0yhi
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/ananyas-workspace-k0yhi/ananyas-workspace-k0yhi/dataset

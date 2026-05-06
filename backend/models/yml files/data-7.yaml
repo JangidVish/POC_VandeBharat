@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 16
+names: ['Axle Box Cover', 'Battery box', 'Brake Module', 'Broken', 'Crack', 'Electric Box', 'ElectricBox', 'Loose Nutboult', 'Missing NutBoult', 'Phonicwheel cover', 'Primary Suspension', 'Puncture', 'Secondary Suspension', 'Suspension', 'Water Reservior', 'Y shaped joint']
+
+roboflow:
+  workspace: oms-workspace-smzyo
+  project: oms-workspace-smzyo
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/oms-workspace-smzyo/oms-workspace-smzyo/dataset

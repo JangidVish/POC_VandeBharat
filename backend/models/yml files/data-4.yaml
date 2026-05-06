@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 28
+names: ['Bolster', 'Bolster_secondary_spring', 'CBC_shank', 'Coil_spring_primary', 'Lower_spring_beam', 'Safety_strap', 'Swing_links_Hangers', 'axle_box_safety_bolt', 'axle_house_boxing', 'battery_box', 'beam_with_wear_plate', 'bio_tank', 'bogie_frame', 'bolt', 'brake_head', 'brake_hose_pipes', 'compression_springs', 'inletvalve', 'j_bracket', 'outlet', 'pipes', 'reservoir', 'shock_absorber', 'steps', 'striker _support', 'water_pump', 'water_tank', 'wire_rope']
+
+roboflow:
+  workspace: ananyas-workspace-k0yhi
+  project: ananyas-workspace-k0yhi
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/ananyas-workspace-k0yhi/ananyas-workspace-k0yhi/dataset

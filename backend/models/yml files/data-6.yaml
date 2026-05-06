@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 31
+names: ['Auxiliary tank', 'Battery box', 'Bend in the rod', 'Broken net', 'Broken step', 'Broken steps', 'Crack in suspension', 'Crack in the suspension', 'Hanging part', 'Hanging part from step', 'Leakage in the auxiliary tank', 'Missing nuts', 'Oil leakage', 'Open door of the transformer', 'Primary suspension', 'Rust in Battery box', 'Rust in primary suspension', 'Rust in the pipe', 'Rust in the supporting Rod', 'Rust insuspension', 'Secondary suspension', 'Train-parts-detection', 'hanging wires', 'hole', 'lose rods', 'missing rust', 'outlet pipe', 'rust in rod', 'rust in the nut', 'rust in the waste outlet', 'smoke is coming from the transformer']
+
+roboflow:
+  workspace: sudarshans-workspace-jcfcl
+  project: sudarshans-workspace-jcfcl
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/sudarshans-workspace-jcfcl/sudarshans-workspace-jcfcl/dataset

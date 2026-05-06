@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 18
+names: ['Battery Box', 'Bracket', 'Cover Box', 'Engine', 'J Joint', 'MCB', 'Metal Net Cover', 'Nut system', 'Outlet Pipe', 'Primary Suspension', 'Secondary suspension', 'Steps', 'Supporting Rod', 'Switch', 'Tank', 'Transformer', 'Wire', 'nuts']
+
+roboflow:
+  workspace: sudarshans-workspace-jcfcl
+  project: sudarshans-workspace-jcfcl
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/sudarshans-workspace-jcfcl/sudarshans-workspace-jcfcl/dataset

@@ -1,0 +1,38 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 11
+names:
+  - crack
+  - rust
+  - leakage
+  - deformation
+  - missing_part
+  - broken
+  - puncture
+  - hanging
+  - loose
+  - hole
+  - smoke_emission
+
+# Canonical defect class mapping (source → canonical)
+# crack         ← crack, Crack, Crack in suspension, Crack in the suspension
+# rust          ← rust, Rusting, Corrosion-induced_perforation, Rust in Battery box,
+#                  Rust in primary suspension, Rust in the pipe, Rust in the supporting Rod,
+#                  Rust insuspension, rust in rod, rust in the nut, rust in the waste outlet
+# leakage       ← leakage, acod_leak, Leakage in the auxiliary tank, Oil leakage
+# deformation   ← deformed, Deformation, Bend in the rod, busted
+# missing_part  ← missing_part, missing_bolt, Missing nuts, Missing NutBoult
+# broken        ← Broken, Broken step, Broken steps, Broken net
+# puncture      ← puncture, Puncture
+# hanging       ← hanging wires, Hanging part, Hanging part from step
+# loose         ← Loose Nutboult, lose rods
+# hole          ← hole
+# smoke_emission← smoke is coming from the transformer
+
+roboflow:
+  workspace: vande-bharat-combined
+  project: defect-detection
+  version: 1
+  license: Private

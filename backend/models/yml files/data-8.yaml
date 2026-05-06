@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 8
+names: ['AXial', 'Battery', 'Bio-Tank', 'J joint', 'Nut', 'Pipes', 'Water Tank', 'stair']
+
+roboflow:
+  workspace: rohits-workspace-yd14t
+  project: rohits-workspace-yd14t
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/rohits-workspace-yd14t/rohits-workspace-yd14t/dataset

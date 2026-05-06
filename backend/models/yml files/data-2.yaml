@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 36
+names: ['Air Brake Hose', 'Air Spring', 'Axle', 'Axle Wheel', 'Battery box', 'Bio Tank', 'Brake Lever', 'Braking system', 'Cooling Grill', 'Damper', 'Disc', 'Electrical Junction Boxes', 'Electrical Panel', 'Electricity Compenent Box', 'Electricity pipe', 'Hydraulic Hoses', 'Hydraulic Valve', 'LADDER', 'Leaf spring Suspension', 'Pressure Valve', 'Protective Grill', 'Push rod', 'SAB', 'Steel Frame', 'Suspension Frame', 'Suspention', 'Transformer', 'U bolt Clamp', 'Utility Lines', 'Ventilation Grill', 'Vertical Damper', 'Water Reservoir', 'Water Tank', 'Wheel', 'Yaw Damper', 'screws']
+
+roboflow:
+  workspace: sohams-workspace-ipg87
+  project: sohams-workspace-ipg87
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/sohams-workspace-ipg87/sohams-workspace-ipg87/dataset

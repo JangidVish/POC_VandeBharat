@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 5
+names: ['Axle Box Cover', 'Brake Control Module', 'NutBoults', 'Primary Suspension Spring Coil', 'Secondary Suspension Spring Coil']
+
+roboflow:
+  workspace: oms-workspace-smzyo
+  project: oms-workspace-smzyo
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/oms-workspace-smzyo/oms-workspace-smzyo/dataset

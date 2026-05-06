@@ -1,0 +1,118 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 43
+names:
+  # --- COMPONENTS (32) ---
+  - battery_box
+  - primary_suspension_spring
+  - secondary_suspension_spring
+  - transformer
+  - bio_tank
+  - water_tank
+  - auxiliary_reservoir
+  - axle_box_cover
+  - electrical_box
+  - steps_footboard
+  - j_bracket
+  - brake_control_module
+  - damper
+  - wheel
+  - pipes
+  - nut_bolt
+  - axle
+  - wire
+  - grill_cover
+  - outlet_pipe
+  - hydraulic_valve
+  - rod
+  - sab
+  - cbc_shank
+  - bogie_frame
+  - disc
+  - brake_head
+  - brake_lever
+  - ladder
+  - safety_strap
+  - swing_hanger
+  - water_pump
+  # --- DEFECTS (11) ---
+  - crack
+  - rust
+  - leakage
+  - deformation
+  - missing_part
+  - broken
+  - puncture
+  - hanging
+  - loose
+  - hole
+  - smoke_emission
+
+# ── COMPONENT MAPPING ──────────────────────────────────────────────────────
+# battery_box              ← battery_box, Battery Box, Battery box, Battery
+# primary_suspension_spring← primary_coil_spring, Primary Suspension, Coil_spring_primary,
+#                            Primary Suspension Spring Coil, Primary suspension,
+#                            compression_springs, Air Spring, Leaf spring Suspension
+# secondary_suspension_spring← Secondary suspension, Secondary Suspension Spring Coil,
+#                            Secondary Suspension, Bolster_secondary_spring
+# transformer              ← transformer, Transformer
+# bio_tank                 ← Bio Tank, bio_tank, Bio-Tank
+# water_tank               ← Water Tank, water_tank
+# auxiliary_reservoir      ← auxilliary_reservoir, Auxiliary tank, Water Reservoir, reservoir
+# axle_box_cover           ← Axle Box Cover, axle_house_boxing
+# electrical_box           ← Electricity Box, Electrical Junction Boxes, Electrical Panel,
+#                            Electricity Compenent Box, Electric Box, ElectricBox
+# steps_footboard          ← footboard, Steps, steps, stair
+# j_bracket                ← J Joint, j_bracket, J joint, Y shaped joint
+# brake_control_module     ← Brake Control Module, Brake Module, Braking system
+# damper                   ← Damper, Vertical Damper, Yaw Damper, shock_absorber
+# wheel                    ← Axle Wheel, Wheel, Phonicwheel cover
+# pipes                    ← pipes, Pipes, Electricity pipe, brake_hose_pipes,
+#                            Air Brake Hose, Hydraulic Hoses
+# nut_bolt                 ← NutBoults, Nut system, nuts, bolt, axle_box_safety_bolt,
+#                            U bolt Clamp, screws, Nut
+# axle                     ← Axle, AXial
+# wire                     ← Wire, wire_rope
+# grill_cover              ← Cooling Grill, Protective Grill, Ventilation Grill, Metal Net Cover
+# outlet_pipe              ← outlet, Outlet Pipe, outlet pipe
+# hydraulic_valve          ← Hydraulic Valve, Pressure Valve, inletvalve, regulator
+# rod                      ← Supporting Rod, Lower_spring_beam, Push rod
+# sab                      ← SAB
+# cbc_shank                ← CBC_shank
+# bogie_frame              ← bogie_frame, Bolster
+# disc                     ← Disc
+# brake_head               ← brake_head
+# brake_lever              ← Brake Lever
+# ladder                   ← LADDER
+# safety_strap             ← Safety_strap
+# swing_hanger             ← Swing_links_Hangers
+# water_pump               ← water_pump
+#
+# ── DEFECT MAPPING ─────────────────────────────────────────────────────────
+# crack          ← crack, Crack, Crack in suspension, Crack in the suspension
+# rust           ← rust, Rusting, Corrosion-induced_perforation, Rust in Battery box,
+#                  Rust in primary suspension, Rust in the pipe, Rust in the supporting Rod,
+#                  Rust insuspension, rust in rod, rust in the nut, rust in the waste outlet
+# leakage        ← leakage, acod_leak, Leakage in the auxiliary tank, Oil leakage
+# deformation    ← deformed, Deformation, Bend in the rod, busted
+# missing_part   ← missing_part, missing_bolt, Missing nuts, Missing NutBoult
+# broken         ← Broken, Broken step, Broken steps, Broken net
+# puncture       ← puncture, Puncture
+# hanging        ← hanging wires, Hanging part, Hanging part from step
+# loose          ← Loose Nutboult, lose rods
+# hole           ← hole
+# smoke_emission ← smoke is coming from the transformer
+#
+# ── DROPPED (noise/invalid) ────────────────────────────────────────────────
+# Train-parts-detection  → not a class (project name)
+# missing rust           → labeling error
+# Open door of the transformer → map to broken if needed
+# Engine, Tank, Cover Box → too generic, needs re-labeling
+
+roboflow:
+  workspace: vande-bharat-combined
+  project: component-defect-detection
+  version: 1
+  license: Private
