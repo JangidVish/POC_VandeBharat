@@ -1,0 +1,31 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+
+# ── PaddleOCR downloaded models (auto-downloaded at runtime) ──────────────────
+inference/
+~/.paddleocr/
+~/.paddlex/
+
+# ── Uploaded / test files ─────────────────────────────────────────────────────
+Source/
+data/videos/*
+data/frames/*
+data/outputs/*
+!data/videos/.gitkeep
+!data/frames/.gitkeep
+!data/outputs/.gitkeep
+*_preprocessed.jpg
+*_preprocessed.png
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

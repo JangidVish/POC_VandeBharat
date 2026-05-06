@@ -1,0 +1,13 @@
+{
+  "name": "vande-bharat-poc",
+  "private": true,
+  "scripts": {
+    "start":      "concurrently -n BACKEND,OCR,FRONTEND -c bgBlue.bold,bgMagenta.bold,bgGreen.bold \"npm run backend\" \"npm run ocr\" \"npm run frontend\"",
+    "backend":    "cd backend && python -m uvicorn main:app --reload --port 8000",
+    "ocr":        "cd backend/OCR && E:\\PROJECTS\\VandeBharat\\OCR\\venv\\Scripts\\python.exe server.py",
+    "frontend":   "cd ui && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

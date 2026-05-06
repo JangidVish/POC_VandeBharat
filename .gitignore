@@ -1,0 +1,48 @@
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+venv/
+.venv/
+env/
+
+# ── ML / Model artifacts ──────────────────────────────────────────────────────
+*.pt
+*.onnx
+*.engine
+*.trt
+runs/
+training_runs/
+
+# ── PaddleOCR model cache ─────────────────────────────────────────────────────
+~/.paddleocr/
+~/.paddlex/
+
+# ── Data / uploads ────────────────────────────────────────────────────────────
+data/videos/*
+data/frames/*
+data/outputs/*
+!data/videos/.gitkeep
+!data/frames/.gitkeep
+!data/outputs/.gitkeep
+*.mp4
+*.avi
+*.mov
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.swp

@@ -4,6 +4,7 @@ import VideoPanel from './components/VideoPanel'
 import DetectionSidebar from './components/DetectionSidebar'
 import Timeline from './components/Timeline'
 import SummaryModal from './components/SummaryModal'
+import OCRPanel from './components/OCRPanel'
 import { useDetectionStream } from './hooks/useDetectionStream'
 import { DETECTION_SEQUENCES, TIMELINE_EVENTS } from './data/mockDetections'
 import './index.css'
@@ -16,6 +17,9 @@ const FRAME_INTERVAL    = 800
 const TIMELINE_INTERVAL = 2200
 
 export default function App() {
+  // ── View state ──
+  const [activeView, setActiveView] = useState('inspection')  // 'inspection' | 'ocr'
+
   // ── Shared state ──
   const [detections, setDetections]       = useState([])
   const [alerts, setAlerts]               = useState([])
@@ -197,6 +201,20 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#F8FAFC', overflow: 'hidden' }}>
       <Header fps={fps} isActive={isActive} frameCount={frameCount * (USE_MOCK ? 12 : 1)} />
 
+      {/* ── View tabs ── */}
+      <div style={{ display: 'flex', gap: 2, padding: '0 16px', background: '#FFFFFF', borderBottom: '1px solid #E2E8F0', flexShrink: 0 }}>
+        {[['inspection', '🔍 Defect Inspection'], ['ocr', '🚆 Train Number OCR']].map(([view, label]) => (
+          <button key={view} onClick={() => setActiveView(view)} style={{
+            padding: '8px 18px', border: 'none', borderBottom: activeView === view ? '2px solid #2563EB' : '2px solid transparent',
+            background: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+            color: activeView === view ? '#2563EB' : '#64748B', marginBottom: -1, transition: 'color .15s'
+          }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeView === 'ocr' ? <OCRPanel /> : (
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
         <VideoPanel
           detections={detections}
@@ -211,10 +229,12 @@ export default function App() {
         />
       </div>
 
-      <Timeline events={timelineEvents} />
+      )}
 
-      {/* Control bar */}
-      <div style={{
+      {activeView === 'inspection' && <Timeline events={timelineEvents} />}
+
+      {/* Control bar — only in inspection view */}
+      {activeView === 'inspection' && <div style={{
         height: 44, background: '#FFFFFF', borderTop: '1px solid #E2E8F0',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 16px', flexShrink: 0
@@ -271,7 +291,7 @@ export default function App() {
             View Summary
           </button>
         </div>
-      </div>
+      </div>}
 
       {connBadge}
 
