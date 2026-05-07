@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import Select from '../../components/common/Select';
 import ProgressBar from '../../components/common/ProgressBar';
 import StatusChip from '../../components/common/StatusChip';
 import ResultCard from './ResultCard';
@@ -9,36 +8,74 @@ import AnalysisDetailDrawer from './AnalysisDetailDrawer';
 import { useDetectionStream } from '../../hooks/useDetectionStream';
 import { useToast } from '../../context/ToastContext';
 
-// Build a result object from a WebSocket payload.
-// Uses backend's `defect` boolean and `severity` directly — no guessing.
-function buildResultFromWS(wsPayload, framePool) {
+const YOLO_API = 'http://localhost:5001/api/yolo/predict';
+
+// Convert base64 thumbnail to a Blob for multipart upload
+function b64ToBlob(dataUrl) {
+  const [header, data] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)[1];
+  const bytes = atob(data);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+// Send one frame image to the YOLO service and return detections
+async function detectFrame(imageBlob, signal) {
+  const fd = new FormData();
+  fd.append('file', imageBlob, 'frame.jpg');
+  const resp = await fetch(YOLO_API, { method: 'POST', body: fd, signal });
+  if (!resp.ok) throw new Error(`YOLO service error: ${resp.status}`);
+  return (await resp.json()).detections ?? [];
+}
+
+// Map YOLO service detections to the shape the UI expects
+function mapDetections(rawDetections, frameW, frameH, confidence) {
+  return rawDetections
+    .filter(d => (d.confidence ?? 0) >= confidence)
+    .map(d => {
+      const [x, y, w, h] = d.bbox_px ?? [0, 0, 0, 0];
+      return {
+        label:      d.label ?? 'UNKNOWN',
+        confidence: d.confidence ?? 0,
+        type:       d.defect ? 'defect' : 'normal',
+        severity:   d.severity ?? null,
+        bbox: frameW && frameH ? {
+          top:    `${((y / frameH) * 100).toFixed(1)}%`,
+          left:   `${((x / frameW) * 100).toFixed(1)}%`,
+          width:  `${((w / frameW) * 100).toFixed(1)}%`,
+          height: `${((h / frameH) * 100).toFixed(1)}%`,
+        } : null,
+      };
+    });
+}
+
+// Build a result from a WebSocket payload (live stream mode)
+function buildResultFromWS(wsPayload, confidence) {
   const { detections, meta } = wsPayload;
   const idx = meta?.frame ?? 0;
-  const poolFrame = framePool[idx % Math.max(framePool.length, 1)];
 
-  const mapped = (detections ?? []).map(d => ({
-    label:      d.label ?? 'UNKNOWN',
-    confidence: d.confidence ?? 0,
-    type:       d.defect ? 'defect' : 'normal',
-    severity:   d.severity ?? null,
-    bbox:       d.bbox
-      ? {
-          top:    `${(d.bbox[1] * 100).toFixed(1)}%`,
-          left:   `${(d.bbox[0] * 100).toFixed(1)}%`,
-          width:  `${(d.bbox[2] * 100).toFixed(1)}%`,
-          height: `${(d.bbox[3] * 100).toFixed(1)}%`,
-        }
-      : null,
-    track_id: d.track_id,
-  }));
+  const mapped = (detections ?? [])
+    .filter(d => (d.confidence ?? 0) >= confidence)
+    .map(d => ({
+      label:      d.label ?? 'UNKNOWN',
+      confidence: d.confidence ?? 0,
+      type:       d.defect ? 'defect' : 'normal',
+      severity:   d.severity ?? null,
+      bbox: d.bbox ? {
+        top:    `${(d.bbox[1] * 100).toFixed(1)}%`,
+        left:   `${(d.bbox[0] * 100).toFixed(1)}%`,
+        width:  `${(d.bbox[2] * 100).toFixed(1)}%`,
+        height: `${(d.bbox[3] * 100).toFixed(1)}%`,
+      } : null,
+    }));
 
   const defectCount = mapped.filter(d => d.type === 'defect').length;
-
   return {
     id:         `Frame_${String(idx).padStart(3, '0')}.jpg`,
     status:     defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
     defects:    defectCount,
-    thumbnail:  poolFrame?.thumbnail ?? null,
+    thumbnail:  null,
     meta:       { frame: idx, fps: meta?.fps, latency_ms: meta?.latency_ms },
     detections: mapped,
   };
@@ -47,37 +84,91 @@ function buildResultFromWS(wsPayload, framePool) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const Detection = ({ frames = [], onComplete }) => {
-  const toast = useToast();
+  const toast    = useToast();
+  const hasFrames = frames.length > 0;
+
   const [running, setRunning]           = useState(false);
   const [results, setResults]           = useState([]);
+  const [progress, setProgress]         = useState(0);
+  const [statusText, setStatusText]     = useState('Ready — click RUN DETECTION');
   const [selectedResult, setSelectedResult] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [confidence, setConfidence]     = useState(0.35);
-  const [statusText, setStatusText]     = useState('Ready — click RUN DETECTION');
-  const [frameCount, setFrameCount]     = useState(0);
   const abortRef = useRef(null);
 
-  // WebSocket is active whenever detection is running
+  // WebSocket — only active in live stream mode (no frames)
   const { detections: wsDet, meta: wsMeta, isConnected, connState, disconnect: wsDisconnect }
-    = useDetectionStream(running);
+    = useDetectionStream(running && !hasFrames);
 
-  // ── Handle each incoming WS frame ──────────────────────────────────────────
+  // ── PATH A: frame-by-frame YOLO HTTP (Stage 1 frames present) ──────────────
+  async function runFrameDetection() {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const accumulated = [];
+
+    for (let i = 0; i < frames.length; i++) {
+      if (controller.signal.aborted) break;
+
+      setStatusText(`Analysing frame ${i + 1} / ${frames.length}…`);
+      setProgress(Math.round(((i) / frames.length) * 100));
+
+      try {
+        const blob = b64ToBlob(frames[i].thumbnail);
+        const raw  = await detectFrame(blob, controller.signal);
+        // thumbnail is 320×180 — use those dims for bbox normalisation
+        const mapped = mapDetections(raw, 320, 180, confidence);
+        const defectCount = mapped.filter(d => d.type === 'defect').length;
+
+        accumulated.push({
+          id:         frames[i].id,
+          status:     defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
+          defects:    defectCount,
+          thumbnail:  frames[i].thumbnail,
+          detections: mapped,
+        });
+
+        // Batch UI update every 5 frames
+        if (i % 5 === 0 || i === frames.length - 1) {
+          setResults([...accumulated]);
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') break;
+        console.error(`[Detection] Frame ${i} error:`, err);
+        // Still record the frame as processed with 0 detections
+        accumulated.push({
+          id: frames[i].id, status: 'ERROR', defects: 0,
+          thumbnail: frames[i].thumbnail, detections: [],
+        });
+      }
+    }
+
+    if (!controller.signal.aborted) {
+      setResults([...accumulated]);
+      setProgress(100);
+      const defects = accumulated.filter(r => r.defects > 0).length;
+      setStatusText(`Complete — ${accumulated.length} frames, ${defects} defect(s) found`);
+      setRunning(false);
+      toast({ type: 'success', message: `Scan complete — ${accumulated.length} frames, ${defects} defect(s) found.` });
+      onComplete?.(accumulated);
+    }
+  }
+
   useEffect(() => {
-    if (!running || !isConnected) return;
-    if (!wsDet) return;
+    if (running && hasFrames) {
+      runFrameDetection();
+    }
+  }, [running]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Filter by confidence threshold before building result
-    const filtered = wsDet.filter(d => (d.confidence ?? 0) >= confidence);
-    const result = buildResultFromWS({ detections: filtered, meta: wsMeta }, frames);
-
+  // ── PATH B: WebSocket live stream (no frames) ───────────────────────────────
+  useEffect(() => {
+    if (!running || hasFrames || !isConnected || !wsDet) return;
+    const result = buildResultFromWS({ detections: wsDet, meta: wsMeta }, confidence);
     setResults(prev => [...prev, result]);
-    setFrameCount(wsMeta?.frame ?? 0);
-    setStatusText(`Streaming — frame ${wsMeta?.frame ?? '?'}  ·  ${wsMeta?.fps ?? '?'} fps  ·  ${wsMeta?.latency_ms ?? '?'} ms latency`);
+    setStatusText(`Streaming — frame ${wsMeta?.frame ?? '?'}  ·  ${wsMeta?.fps ?? '?'} fps  ·  ${wsMeta?.latency_ms ?? '?'} ms`);
   }, [wsDet, wsMeta]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Connection status toasts ────────────────────────────────────────────────
   useEffect(() => {
-    if (isConnected && running) {
+    if (isConnected && running && !hasFrames) {
       toast({ type: 'success', message: 'Connected to AI detection backend.' });
       setStatusText('Streaming from YOLO backend…');
     }
@@ -93,41 +184,45 @@ const Detection = ({ frames = [], onComplete }) => {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleRun = () => {
     setResults([]);
-    setFrameCount(0);
-    setStatusText('Connecting to backend…');
+    setProgress(0);
+    setStatusText(hasFrames ? `Starting — ${frames.length} frames to analyse…` : 'Connecting to backend…');
     setRunning(true);
-    toast({ type: 'info', message: 'Starting live detection stream…' });
+    toast({ type: 'info', message: hasFrames
+      ? `Running YOLO on ${frames.length} extracted frames…`
+      : 'Starting live detection stream…'
+    });
   };
 
   const handleStop = () => {
+    abortRef.current?.abort();
     wsDisconnect();
     setRunning(false);
-    setStatusText(`Stopped — ${results.length} frames received`);
+    setStatusText(`Stopped — ${results.length} frames processed`);
     toast({ type: 'info', message: 'Detection stopped.' });
   };
 
   const handleComplete = () => {
-    wsDisconnect();
-    setRunning(false);
     if (results.length === 0) {
       toast({ type: 'warning', message: 'No results yet. Run detection first.' });
       return;
     }
+    wsDisconnect();
+    setRunning(false);
     const defects = results.filter(r => r.defects > 0).length;
     toast({ type: 'success', message: `Inspection complete — ${results.length} frames, ${defects} defect(s) found.` });
     onComplete?.(results);
   };
 
   // ── Derived stats ───────────────────────────────────────────────────────────
-  const defectFrames     = results.filter(r => r.defects > 0).length;
-  const totalDetections  = results.reduce((sum, r) => sum + r.detections.length, 0);
+  const defectFrames    = results.filter(r => r.defects > 0).length;
+  const totalDetections = results.reduce((sum, r) => sum + r.detections.length, 0);
 
   const modeLabel = (() => {
+    if (running && hasFrames) return { label: `ANALYSING ${results.length}/${frames.length}`, variant: 'warning' };
     if (running) {
-      return {
-        label:   { connecting: 'CONNECTING…', connected: 'LIVE DETECTION', closed: 'RECONNECTING…', error: 'CONNECTION ERROR' }[connState] ?? 'CONNECTING…',
-        variant: { connecting: 'warning', connected: 'success', closed: 'warning', error: 'error' }[connState] ?? 'warning',
-      };
+      const map = { connecting: 'CONNECTING…', connected: 'LIVE DETECTION', closed: 'RECONNECTING…', error: 'CONNECTION ERROR' };
+      const vmap = { connecting: 'warning', connected: 'success', closed: 'warning', error: 'error' };
+      return { label: map[connState] ?? 'CONNECTING…', variant: vmap[connState] ?? 'warning' };
     }
     if (results.length > 0) return { label: 'DETECTION COMPLETE', variant: 'success' };
     return { label: 'READY', variant: 'neutral' };
@@ -159,14 +254,14 @@ const Detection = ({ frames = [], onComplete }) => {
             <Card title="INPUT SOURCE" padding={true}>
               <div className="flex items-center gap-md bg-surface p-md border border-dashed border-outline-variant rounded mb-md">
                 <div className="bg-primary-container text-white p-sm rounded-sm">
-                  <span className="material-symbols-outlined">video_file</span>
+                  <span className="material-symbols-outlined">{hasFrames ? 'photo_library' : 'live_tv'}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="font-h2 text-primary text-body-base font-bold">
-                    {frames.length > 0 ? `${frames.length} frames loaded` : 'Live backend stream'}
+                    {hasFrames ? `${frames.length} frames from Stage 1` : 'Live backend stream'}
                   </span>
                   <span className="text-body-sm text-on-surface-variant">
-                    {frames.length > 0 ? 'Thumbnails from Stage 1' : 'Video_2.mp4 via YOLO service'}
+                    {hasFrames ? 'Each frame sent to YOLO service once' : 'Video_2.mp4 via YOLO service'}
                   </span>
                 </div>
               </div>
@@ -174,13 +269,11 @@ const Detection = ({ frames = [], onComplete }) => {
 
             <Card title="DETECTION CONTROLS" padding={true}>
               <div className="flex flex-col gap-lg">
-                <div className="flex flex-col gap-sm">
-                  <div className="flex items-center gap-sm bg-surface-container-low p-sm border border-outline-variant rounded-sm">
-                    <span className="material-symbols-outlined text-on-secondary-container text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>model_training</span>
-                    <div className="flex flex-col">
-                      <span className="font-label-caps text-[10px] text-on-surface-variant">ACTIVE MODEL</span>
-                      <span className="font-code text-[11px] text-primary font-bold">railway_inspection_v1-4 / best.pt</span>
-                    </div>
+                <div className="flex items-center gap-sm bg-surface-container-low p-sm border border-outline-variant rounded-sm">
+                  <span className="material-symbols-outlined text-on-secondary-container text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>model_training</span>
+                  <div className="flex flex-col">
+                    <span className="font-label-caps text-[10px] text-on-surface-variant">ACTIVE MODEL</span>
+                    <span className="font-code text-[11px] text-primary font-bold">railway_inspection_v1-4 / best.pt</span>
                   </div>
                 </div>
 
@@ -240,12 +333,14 @@ const Detection = ({ frames = [], onComplete }) => {
                   <span className="font-h2 text-primary">{statusText}</span>
                 </div>
                 <span className="text-body-sm font-code text-on-surface-variant font-bold">
-                  {results.length} frames
+                  {results.length}{hasFrames ? ` / ${frames.length}` : ''} frames
                 </span>
               </div>
-              {running
-                ? <div className="h-2 bg-surface-container-high rounded overflow-hidden"><div className="h-full bg-primary animate-pulse w-full" /></div>
-                : <ProgressBar progress={results.length > 0 ? 100 : 0} height="h-2" />
+              {hasFrames
+                ? <ProgressBar progress={progress} height="h-2" />
+                : running
+                  ? <div className="h-2 bg-surface-container-high rounded overflow-hidden"><div className="h-full bg-primary animate-pulse w-full" /></div>
+                  : <ProgressBar progress={results.length > 0 ? 100 : 0} height="h-2" />
               }
             </div>
 
@@ -253,7 +348,7 @@ const Detection = ({ frames = [], onComplete }) => {
             <div className="bg-surface-container-lowest border border-outline-variant rounded-lg flex-1 overflow-hidden flex flex-col shadow-sm">
               <div className="px-panel-padding py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low/30">
                 <span className="font-label-caps text-on-surface-variant text-[11px]">DETECTION RESULTS GALLERY</span>
-                {running && (
+                {running && !hasFrames && (
                   <span className="font-label-caps text-[10px] text-primary animate-pulse">● LIVE</span>
                 )}
               </div>

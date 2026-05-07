@@ -39,7 +39,7 @@ const WorkflowFooter = ({ currentStep = 1 }) => {
             SYSTEM STATUS: <span className="text-primary font-bold">READY</span>
           </span>
           <span className="font-label-caps text-primary">
-            © 2024 RAIL-AI SYSTEMS | VER. 4.2.0-STABLE
+            © 2026 | VER. 4.2.0-STABLE
           </span>
         </div>
       </div>
