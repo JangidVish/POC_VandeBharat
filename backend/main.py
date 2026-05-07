@@ -4,10 +4,9 @@ FastAPI backend — streams detection results to React UI via WebSocket.
 Run:
     uvicorn main:app --reload --port 8000
 
-Config (top of file):
-    MODEL_PATH  — path to your .pt file, or None to use stub mode
+Config via env vars:
     VIDEO_SOURCE — path to video file, or 0 for live camera
-    USE_STUB    — True = no model needed (for UI testing)
+    USE_STUB     — "true" to use fake detections (no YOLO service needed)
 """
 
 import asyncio
@@ -24,24 +23,15 @@ from inference import InferenceEngine
 from video_processor import VideoProcessor
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-MODEL_PATH   = os.environ.get("MODEL_PATH",   "models/best.pt")
 VIDEO_SOURCE = os.environ.get("VIDEO_SOURCE", "../ui/public/Video_2.mp4")
 TARGET_FPS   = int(os.environ.get("TARGET_FPS", "25"))
 USE_STUB     = os.environ.get("USE_STUB", "false").lower() == "true"
-
-# Auto-fallback to stub if model file doesn't exist
-if not USE_STUB and not os.path.exists(MODEL_PATH):
-    print(f"[WARNING] Model not found at '{MODEL_PATH}' — falling back to STUB mode")
-    USE_STUB = True
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.engine = InferenceEngine(
-        model_path=MODEL_PATH if not USE_STUB else None,
-        use_stub=USE_STUB,
-    )
+    app.state.engine = InferenceEngine(use_stub=USE_STUB)
     yield
     print("[Shutdown] Releasing resources")
 
@@ -71,8 +61,8 @@ def px_to_pct(bbox_px: list[int], frame_w: int, frame_h: int) -> list[float]:
 def health():
     return {
         "status": "ok",
-        "mode": "stub" if USE_STUB else "model",
-        "model_path": MODEL_PATH,
+        "mode": "stub" if USE_STUB else "yolo-service",
+        "yolo_service": "http://localhost:5001",
         "video_source": str(VIDEO_SOURCE),
     }
 

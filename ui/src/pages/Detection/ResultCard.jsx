@@ -11,20 +11,15 @@ const ResultCard = ({ id, status, defects, thumbnail, detections, onClick }) => 
       <div className="aspect-video relative bg-surface-container-high overflow-hidden">
         <img className="w-full h-full object-cover" src={thumbnail} alt={id} />
         
-        {/* Mock Bounding Boxes */}
-        {detections && detections.map((det, idx) => (
-          <div 
+        {/* Bounding Boxes */}
+        {detections && detections.map((det, idx) => det.bbox && (
+          <div
             key={idx}
             className={`absolute border-2 flex flex-col ${det.type === 'defect' ? 'border-error' : 'border-primary'}`}
-            style={{ 
-              top: det.bbox.top, 
-              left: det.bbox.left, 
-              width: det.bbox.width, 
-              height: det.bbox.height 
-            }}
+            style={{ top: det.bbox.top, left: det.bbox.left, width: det.bbox.width, height: det.bbox.height }}
           >
             <span className={`${det.type === 'defect' ? 'bg-error' : 'bg-primary'} text-white text-[8px] px-1 font-bold absolute -top-4 left-0 whitespace-nowrap`}>
-              {det.label} {det.confidence}
+              {det.label} {Math.round(det.confidence * 100)}%
             </span>
           </div>
         ))}

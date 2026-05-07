@@ -2,7 +2,4 @@ fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 opencv-python>=4.9.0
 numpy>=1.26.0
-# Uncomment when you have a trained model:
-# ultralytics>=8.2.0
-# torch>=2.2.0
-# torchvision>=0.17.0
+requests>=2.31.0
