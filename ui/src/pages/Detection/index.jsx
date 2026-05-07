@@ -124,6 +124,9 @@ const Detection = ({ frames = [], onComplete }) => {
           status:     defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
           defects:    defectCount,
           thumbnail:  frames[i].thumbnail,
+          gps:        frames[i].gps ?? '—',
+          timestamp:  frames[i].timestamp ?? '—',
+          frameTime:  frames[i].frameTime ?? 0,
           detections: mapped,
         });
 
@@ -138,6 +141,7 @@ const Detection = ({ frames = [], onComplete }) => {
         accumulated.push({
           id: frames[i].id, status: 'ERROR', defects: 0,
           thumbnail: frames[i].thumbnail, detections: [],
+          gps: frames[i].gps ?? '—', timestamp: frames[i].timestamp ?? '—', frameTime: frames[i].frameTime ?? 0,
         });
       }
     }

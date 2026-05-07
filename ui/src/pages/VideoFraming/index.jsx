@@ -8,6 +8,20 @@ import FrameCard from './FrameCard';
 import FrameDetailDrawer from './FrameDetailDrawer';
 import { useToast } from '../../context/ToastContext';
 
+// Simulate a Vande Bharat route: New Delhi → Agra (≈200 km, ~1h 20m)
+function simulateGps(frameTimeSec) {
+  const START_LAT = 28.6408, START_LON = 77.2195; // New Delhi station
+  const END_LAT   = 27.1767, END_LON   = 78.0081; // Agra Cantt
+  const ROUTE_SEC = 4800; // 80 minutes
+  const frac = Math.min(frameTimeSec / ROUTE_SEC, 1);
+  // Small deterministic jitter (no random — stays stable on re-render)
+  const jLat = Math.sin(frameTimeSec * 0.7) * 0.0003;
+  const jLon = Math.cos(frameTimeSec * 0.5) * 0.0003;
+  const lat = (START_LAT + (END_LAT - START_LAT) * frac + jLat).toFixed(4);
+  const lon = (START_LON + (END_LON - START_LON) * frac + jLon).toFixed(4);
+  return `${lat}°N, ${lon}°E`;
+}
+
 async function extractFramesFromVideo(file, intervalMs, onProgress, signal) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -73,7 +87,7 @@ async function extractFramesFromVideo(file, intervalMs, onProgress, signal) {
           id: `img_${String(frames.length + 1).padStart(3, '0')}`,
           timestamp: ts,
           frameTime: t,
-          gps: '—',
+          gps: simulateGps(t),
           iso: '—',
           thumbnail,
         });
