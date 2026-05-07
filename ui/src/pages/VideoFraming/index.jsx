@@ -117,12 +117,14 @@ const VideoFraming = ({ onComplete }) => {
 
   const [isDragging, setIsDragging] = useState(false);
   const [videoFile, setVideoFile] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
   const [videoDuration, setVideoDuration] = useState(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [frames, setFrames] = useState([]);
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showVideoPreview, setShowVideoPreview] = useState(true);
   // Single source of truth — interval and FPS are the same thing expressed differently
   const [intervalMs, setIntervalMs] = useState(500);
   const fps = parseFloat((1000 / Math.max(intervalMs, 40)).toFixed(2));
@@ -156,9 +158,12 @@ const VideoFraming = ({ onComplete }) => {
       toast({ type: 'error', message: 'Please select a valid video file (MP4, AVI, MOV).' });
       return;
     }
+    // Revoke previous URL to avoid memory leaks
+    setVideoUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
     setVideoFile(file);
     setFrames([]);
     setProgress(0);
+    setShowVideoPreview(true);
     loadVideoMeta(file);
     toast({ type: 'info', message: `Video loaded: ${file.name}` });
   }, [toast]);
@@ -216,6 +221,7 @@ const VideoFraming = ({ onComplete }) => {
     setProgress(0);
     setVideoFile(null);
     setVideoDuration(null);
+    setVideoUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
   };
 
   const handleProceed = () => {
@@ -387,32 +393,70 @@ const VideoFraming = ({ onComplete }) => {
           </div>
         </header>
 
-        <div className="p-lg flex-1 overflow-y-auto custom-scrollbar">
-          {frames.length === 0 && !isExtracting ? (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-md opacity-50 select-none">
-              <span className="material-symbols-outlined text-[48px] text-on-surface-variant">video_file</span>
-              <p className="font-body-base text-on-surface-variant">Upload a video and click START FRAMING to extract frames.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-md">
-              {frames.map((frame) => (
-                <FrameCard
-                  key={frame.id}
-                  {...frame}
-                  onClick={() => handleFrameClick(frame)}
-                />
-              ))}
-              {isExtracting && (
-                <div className="border border-outline-variant bg-surface-container-low flex flex-col animate-pulse rounded-default overflow-hidden">
-                  <div className="aspect-video bg-surface-container-highest" />
-                  <div className="p-sm flex flex-col gap-xs">
-                    <div className="h-4 bg-surface-container-highest w-1/2 rounded-sm" />
-                    <div className="h-2 bg-surface-container-highest w-full mt-xs rounded-sm" />
-                  </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+          {/* Video preview player — shown whenever a file is loaded */}
+          {videoUrl && (
+            <div className="border-b border-outline-variant bg-surface-container-lowest flex-shrink-0">
+              <div
+                className="flex items-center justify-between px-lg py-sm cursor-pointer hover:bg-surface-container-low transition-colors"
+                onClick={() => setShowVideoPreview(p => !p)}
+              >
+                <div className="flex items-center gap-sm">
+                  <span className="material-symbols-outlined text-primary text-[18px]">smart_display</span>
+                  <span className="font-label-caps text-[11px] text-primary">VIDEO PREVIEW</span>
+                  {videoDuration != null && (
+                    <span className="font-code text-[10px] text-on-surface-variant">· {formatDuration(videoDuration)}</span>
+                  )}
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
+                  {showVideoPreview ? 'expand_less' : 'expand_more'}
+                </span>
+              </div>
+              {showVideoPreview && (
+                <div className="px-lg pb-lg">
+                  <video
+                    key={videoUrl}
+                    src={videoUrl}
+                    controls
+                    className="w-full max-h-[360px] bg-black rounded-sm border border-outline-variant"
+                  />
                 </div>
               )}
             </div>
           )}
+
+          {/* Frames grid */}
+          <div className="p-lg flex-1">
+            {frames.length === 0 && !isExtracting ? (
+              <div className="flex flex-col items-center justify-center h-full text-center gap-md opacity-50 select-none">
+                <span className="material-symbols-outlined text-[48px] text-on-surface-variant">
+                  {videoUrl ? 'photo_library' : 'video_file'}
+                </span>
+                <p className="font-body-base text-on-surface-variant">
+                  {videoUrl ? 'Click START FRAMING to extract frames.' : 'Upload a video and click START FRAMING to extract frames.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-md">
+                {frames.map((frame) => (
+                  <FrameCard
+                    key={frame.id}
+                    {...frame}
+                    onClick={() => handleFrameClick(frame)}
+                  />
+                ))}
+                {isExtracting && (
+                  <div className="border border-outline-variant bg-surface-container-low flex flex-col animate-pulse rounded-default overflow-hidden">
+                    <div className="aspect-video bg-surface-container-highest" />
+                    <div className="p-sm flex flex-col gap-xs">
+                      <div className="h-4 bg-surface-container-highest w-1/2 rounded-sm" />
+                      <div className="h-2 bg-surface-container-highest w-full mt-xs rounded-sm" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

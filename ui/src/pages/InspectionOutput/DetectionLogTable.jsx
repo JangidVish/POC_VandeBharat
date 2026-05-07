@@ -104,7 +104,7 @@ const DetectionLogTable = ({ data, onViewRow }) => {
           <tbody className="font-body-sm text-on-surface text-[12px]">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-md py-lg text-center text-on-surface-variant font-body-sm">
+                <td colSpan={8} className="px-md py-lg text-center text-on-surface-variant font-body-sm">
                   No results match your filter.
                 </td>
               </tr>
@@ -133,7 +133,6 @@ const DetectionLogTable = ({ data, onViewRow }) => {
                       {row.defect}
                     </span>
                   </td>
-                  <td className="px-md py-sm font-code text-on-surface-variant">{row.bbox}</td>
                   <td className="px-md py-sm">
                     <div className="flex items-center gap-xs">
                       <span className="material-symbols-outlined text-[13px] text-blue-500" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
