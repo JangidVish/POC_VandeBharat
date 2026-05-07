@@ -41,7 +41,7 @@ const AnalysisDetailDrawer = ({ isOpen, onClose, result }) => {
         <div className="p-lg flex flex-col gap-lg overflow-y-auto custom-scrollbar flex-1">
           <div className="aspect-square bg-surface border border-outline-variant rounded relative overflow-hidden">
             <img className="w-full h-full object-cover" src={result.thumbnail} alt={result.id} />
-            <div className={`absolute inset-0 border-2 ${result.defects > 0 ? 'border-error/50' : 'border-primary/30'}`}></div>
+            <div className={`absolute inset-0 border-2 ${result.defects > 0 ? 'border-error/50' : 'border-blue-500/30'}`}></div>
           </div>
           
           <div className="flex flex-col gap-md">
@@ -50,7 +50,7 @@ const AnalysisDetailDrawer = ({ isOpen, onClose, result }) => {
               {result.detections?.map((det, idx) => (
                 <div key={idx} className={`flex justify-between items-center p-md border rounded-sm ${det.type === 'defect' ? 'bg-error-container border-error/20' : 'bg-surface border-outline-variant'}`}>
                   <div className="flex items-center gap-sm">
-                    <span className={`w-3 h-3 rounded-full ${det.type === 'defect' ? 'bg-error' : 'bg-primary'}`}></span>
+                    <span className={`w-3 h-3 rounded-full ${det.type === 'defect' ? 'bg-error' : 'bg-blue-500'}`}></span>
                     <span className={`font-medium text-body-base ${det.type === 'defect' ? 'text-on-error-container' : 'text-primary'}`}>{det.label}</span>
                   </div>
                   <span className={`font-code text-body-sm ${det.type === 'defect' ? 'text-on-error-container' : 'text-on-surface-variant'}`}>

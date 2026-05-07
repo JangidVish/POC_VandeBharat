@@ -15,10 +15,10 @@ const ResultCard = ({ id, status, defects, thumbnail, detections, onClick }) => 
         {detections && detections.map((det, idx) => det.bbox && (
           <div
             key={idx}
-            className={`absolute border-2 flex flex-col ${det.type === 'defect' ? 'border-error' : 'border-primary'}`}
+            className={`absolute border-2 flex flex-col ${det.type === 'defect' ? 'border-error' : 'border-blue-500'}`}
             style={{ top: det.bbox.top, left: det.bbox.left, width: det.bbox.width, height: det.bbox.height }}
           >
-            <span className={`${det.type === 'defect' ? 'bg-error' : 'bg-primary'} text-white text-[8px] px-1 font-bold absolute -top-4 left-0 whitespace-nowrap`}>
+            <span className={`${det.type === 'defect' ? 'bg-error' : 'bg-blue-500'} text-white text-[8px] px-1 font-bold absolute -top-4 left-0 whitespace-nowrap`}>
               {det.label} {Math.round(det.confidence * 100)}%
             </span>
           </div>
