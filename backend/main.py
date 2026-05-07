@@ -4,32 +4,40 @@ FastAPI backend — streams detection results to React UI via WebSocket.
 Run:
     uvicorn main:app --reload --port 8000
 
-Config (top of file):
-    MODEL_PATH  — path to your .pt file, or None to use stub mode
-    VIDEO_SOURCE — path to video file, or 0 for live camera
-    USE_STUB    — True = no model needed (for UI testing)
+Environment variables (all optional):
+    MODEL_PATH   — path to .pt file (default: bundled best.pt)
+    VIDEO_SOURCE — video file path or 0 for live camera (default: ../ui/public/Video_2.mp4)
+    TARGET_FPS   — playback FPS (default: 25)
+    USE_STUB     — 'true' to skip model and use fake detections (default: false)
 """
 
 import asyncio
+import base64
 import json
 import os
 import time
 from contextlib import asynccontextmanager
 
 import cv2
+import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from inference import InferenceEngine
 from video_processor import VideoProcessor
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-MODEL_PATH   = os.environ.get("MODEL_PATH",   "models/best.pt")
-VIDEO_SOURCE = os.environ.get("VIDEO_SOURCE", "../ui/public/Video_2.mp4")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+MODEL_PATH = os.environ.get(
+    "MODEL_PATH",
+    os.path.join(_HERE, "runs", "runs", "detect", "runs", "vande_bharat", "railway_inspection_v1", "weights", "best.pt"),
+)
+VIDEO_SOURCE = os.environ.get("VIDEO_SOURCE", os.path.join(_HERE, "..", "ui", "public", "Video_2.mp4"))
 TARGET_FPS   = int(os.environ.get("TARGET_FPS", "25"))
 USE_STUB     = os.environ.get("USE_STUB", "false").lower() == "true"
 
-# Auto-fallback to stub if model file doesn't exist
 if not USE_STUB and not os.path.exists(MODEL_PATH):
     print(f"[WARNING] Model not found at '{MODEL_PATH}' — falling back to STUB mode")
     USE_STUB = True
@@ -77,6 +85,48 @@ def health():
     }
 
 
+@app.get("/api/info")
+def api_info():
+    """Returns model class names and detected defect labels for the frontend."""
+    engine: InferenceEngine = app.state.engine
+    return {
+        "mode": "stub" if USE_STUB else "model",
+        "model_path": MODEL_PATH if not USE_STUB else None,
+        "video_source": str(VIDEO_SOURCE),
+        "classes": list(engine.class_names.values()),
+        "defect_labels": list(engine.defect_labels),
+    }
+
+
+class DetectRequest(BaseModel):
+    image: str  # data:image/jpeg;base64,<data>  OR  raw base64
+
+
+@app.post("/api/detect")
+def detect_image(payload: DetectRequest):
+    """Run YOLO on a single base64-encoded image. Returns detections with % bbox."""
+    engine: InferenceEngine = app.state.engine
+
+    # Strip optional data-URL prefix
+    raw = payload.image.split(",", 1)[-1]
+    img_bytes = base64.b64decode(raw)
+    np_arr = np.frombuffer(img_bytes, np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        return {"detections": [], "error": "Could not decode image"}
+
+    h, w = frame.shape[:2]
+    raw_dets = engine.predict(frame)
+    detections = []
+    for det in raw_dets:
+        d = det.copy()
+        d["bbox"] = px_to_pct(d.pop("bbox_px"), w, h)
+        detections.append(d)
+
+    return {"detections": detections}
+
+
 @app.websocket("/ws/detections")
 async def stream_detections(ws: WebSocket):
     await ws.accept()
@@ -109,14 +159,12 @@ async def stream_detections(ws: WebSocket):
             h, w = frame.shape[:2]
             raw_detections = engine.predict(frame)
 
-            # Convert pixel bbox → percentage bbox for frontend
             detections = []
             for det in raw_detections:
                 d = det.copy()
                 d["bbox"] = px_to_pct(d.pop("bbox_px"), w, h)
                 detections.append(d)
 
-            # FPS calculation
             fps_counter += 1
             now = time.time()
             if now - fps_ts >= 1.0:
@@ -131,13 +179,12 @@ async def stream_detections(ws: WebSocket):
                     "fps": current_fps,
                     "latency_ms": round((time.time() - t0) * 1000),
                     "mode": "stub" if USE_STUB else "model",
-                }
+                },
             }
 
             await ws.send_text(json.dumps(payload))
             frame_count += 1
 
-            # Pace to target FPS
             elapsed = time.time() - t0
             sleep_time = video.frame_interval - elapsed
             if sleep_time > 0:

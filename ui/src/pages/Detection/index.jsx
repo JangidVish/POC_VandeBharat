@@ -1,234 +1,161 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import Select from '../../components/common/Select';
 import ProgressBar from '../../components/common/ProgressBar';
 import StatusChip from '../../components/common/StatusChip';
 import ResultCard from './ResultCard';
 import AnalysisDetailDrawer from './AnalysisDetailDrawer';
-import { useDetectionStream } from '../../hooks/useDetectionStream';
 import { useToast } from '../../context/ToastContext';
 
-// ── Simulation data ──────────────────────────────────────────────────────────
-const NORMAL_COMPONENTS = [
-  { label: 'Wheel Assembly',    confidence: 0.98 },
-  { label: 'Axle Box Cover',    confidence: 0.95 },
-  { label: 'Brake Pad',         confidence: 0.96 },
-  { label: 'Secondary Spring',  confidence: 0.94 },
-  { label: 'Wheel Flange',      confidence: 0.97 },
-  { label: 'Anchor Bolt',       confidence: 0.93 },
-];
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-const DEFECT_COMPONENTS = [
-  { label: 'Crack Detected',  confidence: 0.97, severity: 'CRITICAL' },
-  { label: 'Wheel Shelling',  confidence: 0.91, severity: 'HIGH' },
-  { label: 'Brake Binding',   confidence: 0.88, severity: 'HIGH' },
-  { label: 'Oil Seepage',     confidence: 0.85, severity: 'MEDIUM' },
-];
-
-function fakeBbox(seed) {
-  const x = ((seed * 37) % 60) + 5;
-  const y = ((seed * 53) % 50) + 10;
-  return { top: `${y}%`, left: `${x}%`, width: '18%', height: '15%' };
-}
-
-// Deterministic: every 6th frame (starting at index 2) has a defect
-function simulateDetections(frameIndex, confidenceThreshold) {
-  const hasDefect = frameIndex % 6 === 2;
-  const normalCount = (frameIndex % 3) + 1;
-
-  const detections = [];
-  for (let i = 0; i < normalCount; i++) {
-    const c = NORMAL_COMPONENTS[(frameIndex + i) % NORMAL_COMPONENTS.length];
-    if (c.confidence >= confidenceThreshold) {
-      detections.push({ ...c, type: 'normal', bbox: fakeBbox(frameIndex + i) });
-    }
-  }
-  if (hasDefect) {
-    const d = DEFECT_COMPONENTS[Math.floor(frameIndex / 6) % DEFECT_COMPONENTS.length];
-    if (d.confidence >= confidenceThreshold) {
-      detections.push({ ...d, type: 'defect', bbox: fakeBbox(frameIndex + 100) });
-    }
-  }
-  return detections;
-}
-
-function delay(ms) {
-  return new Promise(res => setTimeout(res, ms));
-}
-
-// ── WebSocket helpers (fallback when no Stage-1 frames) ──────────────────────
-const DEFECT_KEYWORDS = ['crack', 'corrosion', 'defect', 'damage', 'wear', 'fault', 'break', 'seepage', 'shelling'];
+const DEFECT_KEYWORDS = ['crack', 'shelling', 'binding', 'defect', 'damage', 'seepage', 'fault', 'sparking', 'wear']
 function classifyType(label = '') {
-  return DEFECT_KEYWORDS.some(kw => label.toLowerCase().includes(kw)) ? 'defect' : 'normal';
-}
-function buildResultFromWS(wsPayload, framePool) {
-  const { detections, meta } = wsPayload;
-  const idx = meta?.frame ?? 0;
-  const poolFrame = framePool[idx % Math.max(framePool.length, 1)];
-  const mapped = (detections ?? []).map(d => ({
-    label: d.label ?? 'UNKNOWN',
-    confidence: d.confidence ?? 0,
-    type: d.type ?? classifyType(d.label),
-    bbox: d.bbox ? { top: `${(d.bbox[1]*100).toFixed(1)}%`, left: `${(d.bbox[0]*100).toFixed(1)}%`, width: `${(d.bbox[2]*100).toFixed(1)}%`, height: `${(d.bbox[3]*100).toFixed(1)}%` } : null,
-    track_id: d.track_id,
-  }));
-  const defectCount = mapped.filter(d => d.type === 'defect').length;
-  return {
-    id: `Frame_${String(idx).padStart(3,'0')}.jpg`,
-    status: defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
-    defects: defectCount,
-    thumbnail: poolFrame?.thumbnail ?? null,
-    meta: { frame: idx, fps: meta?.fps, latency_ms: meta?.latency_ms },
-    detections: mapped,
-  };
+  return DEFECT_KEYWORDS.some(kw => label.toLowerCase().includes(kw)) ? 'defect' : 'normal'
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
-const WS_STUB_MIN = 25;
-const WS_STUB_MAX = 50;
+function mapDetections(rawDets, confidenceThreshold) {
+  return rawDets
+    .filter(d => d.confidence >= confidenceThreshold)
+    .map(d => ({
+      label:      d.label ?? 'UNKNOWN',
+      confidence: d.confidence ?? 0,
+      type:       d.defect ? 'defect' : classifyType(d.label),
+      severity:   d.severity ?? null,
+      bbox:       d.bbox
+        ? {
+            top:    `${(d.bbox[1] * 100).toFixed(1)}%`,
+            left:   `${(d.bbox[0] * 100).toFixed(1)}%`,
+            width:  `${(d.bbox[2] * 100).toFixed(1)}%`,
+            height: `${(d.bbox[3] * 100).toFixed(1)}%`,
+          }
+        : null,
+      track_id: d.track_id,
+    }))
+}
 
 const Detection = ({ frames = [], onComplete }) => {
-  const toast = useToast();
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState([]);
-  const [selectedResult, setSelectedResult] = useState(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [confidence, setConfidence] = useState(0.85);
-  const [model, setModel] = useState('v4-hp');
-  const [statusText, setStatusText] = useState('Ready — click RUN DETECTION');
-  const abortRef = useRef(null);
+  const toast = useToast()
 
-  // WebSocket (fallback only — used when no Stage-1 frames)
-  const wsEnabled = running && frames.length === 0;
-  const wsStopAtRef = useRef(0);
-  const { detections: wsDet, meta: wsMeta, isConnected, connState, disconnect: wsDisconnect } = useDetectionStream(wsEnabled);
+  const [running, setRunning]         = useState(false)
+  const [progress, setProgress]       = useState(0)
+  const [results, setResults]         = useState([])
+  const [selectedResult, setSelected] = useState(null)
+  const [isDrawerOpen, setDrawerOpen] = useState(false)
+  const [confidence, setConfidence]   = useState(0.85)
+  const [modelInfo, setModelInfo]     = useState(null)
+  const [statusText, setStatusText]   = useState('Ready — click RUN DETECTION')
+  const [backendError, setBackendError] = useState(false)
 
-  // ── Simulation mode (Stage-1 frames present) ─────────────────────────────
-  const runSimulation = useCallback(async () => {
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const accumulated = [];
+  const abortRef = useRef(null)
+
+  // Fetch model info on mount
+  useEffect(() => {
+    fetch(`${API_URL}/api/info`)
+      .then(r => r.json())
+      .then(data => { setModelInfo(data); setBackendError(false) })
+      .catch(() => {
+        setBackendError(true)
+        console.warn('[Detection] Cannot reach backend at', API_URL)
+      })
+  }, [])
+
+  const runDetection = async () => {
+    if (frames.length === 0) {
+      toast({ type: 'warning', message: 'No frames to process. Extract frames in Step 1 first.' })
+      return
+    }
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setResults([])
+    setProgress(0)
+    setRunning(true)
+    setStatusText(`Processing 0 / ${frames.length} frames…`)
+    toast({ type: 'info', message: `Running YOLO detection on ${frames.length} frames…` })
+
+    const accumulated = []
 
     for (let i = 0; i < frames.length; i++) {
-      if (controller.signal.aborted) break;
+      if (controller.signal.aborted) break
 
-      // 80-120ms per frame simulated inference
-      await delay(80 + ((i * 37) % 40));
+      const frame = frames[i]
+      setStatusText(`Processing frame ${i + 1} / ${frames.length}…`)
 
-      const detections = simulateDetections(i, confidence);
-      const defectCount = detections.filter(d => d.type === 'defect').length;
-      const result = {
-        id: frames[i].id,
-        status: defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
-        defects: defectCount,
-        thumbnail: frames[i].thumbnail,
-        detections,
-      };
+      try {
+        const res = await fetch(`${API_URL}/api/detect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: frame.thumbnail }),
+          signal: controller.signal,
+        })
 
-      accumulated.push(result);
-      // Batch UI updates every 5 frames to limit re-renders
-      if (i % 5 === 0 || i === frames.length - 1) {
-        setResults([...accumulated]);
-        setProgress(Math.round(((i + 1) / frames.length) * 100));
-        setStatusText(`Processing frame ${i + 1} / ${frames.length}…`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+        const data = await res.json()
+        const detections = mapDetections(data.detections ?? [], confidence)
+        const defectCount = detections.filter(d => d.type === 'defect').length
+
+        const result = {
+          id:         frame.id,
+          timestamp:  frame.timestamp,
+          status:     defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
+          defects:    defectCount,
+          thumbnail:  frame.thumbnail,   // real frame image from step 1
+          detections,
+        }
+
+        accumulated.push(result)
+        // Batch UI updates every 5 frames to reduce re-renders
+        if (i % 5 === 0 || i === frames.length - 1) {
+          setResults([...accumulated])
+        }
+        setProgress(Math.round(((i + 1) / frames.length) * 100))
+
+      } catch (err) {
+        if (controller.signal.aborted) break
+        console.error(`[Detection] Frame ${i} failed:`, err)
+        toast({ type: 'error', message: `Backend error on frame ${i + 1}: ${err.message}` })
+        // Continue to next frame rather than aborting the whole run
       }
     }
 
     if (!controller.signal.aborted) {
-      setRunning(false);
-      setProgress(100);
-      const defects = accumulated.filter(r => r.defects > 0).length;
-      setStatusText(`Complete — ${accumulated.length} frames processed, ${defects} with defects`);
-      toast({ type: 'success', message: `Scan complete — ${accumulated.length} frames, ${defects} defect(s) found.` });
-      onComplete?.(accumulated);
+      setRunning(false)
+      setProgress(100)
+      const defects = accumulated.filter(r => r.defects > 0).length
+      setStatusText(`Complete — ${accumulated.length} frames, ${defects} with defects`)
+      toast({ type: 'success', message: `Detection complete — ${accumulated.length} frames, ${defects} defect(s) found.` })
+      onComplete?.(accumulated)
+    } else {
+      setRunning(false)
+      setStatusText(`Stopped at ${accumulated.length} / ${frames.length} frames`)
     }
-  }, [frames, confidence, onComplete, toast]);
+  }
 
-  useEffect(() => {
-    if (running && frames.length > 0) {
-      runSimulation();
-    }
-  }, [running]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleStop = () => {
+    abortRef.current?.abort()
+  }
 
-  // ── WebSocket fallback mode ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!wsEnabled || !isConnected) return;
-    if (!wsDet?.length && !wsMeta?.frame) return;
-
-    const result = buildResultFromWS({ detections: wsDet, meta: wsMeta }, frames);
-    setResults(prev => {
-      const next = [...prev, result];
-      if (next.length >= wsStopAtRef.current) {
-        setTimeout(() => {
-          setRunning(false);
-          wsDisconnect();
-          setStatusText(`Complete — ${next.length} frames streamed`);
-          toast({ type: 'success', message: `Stream complete — ${next.length} frames analysed.` });
-          onComplete?.(next);
-        }, 0);
-      }
-      setProgress(Math.min(Math.round((next.length / wsStopAtRef.current) * 100), 99));
-      return next;
-    });
-  }, [wsDet, wsMeta]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (isConnected && wsEnabled) {
-      toast({ type: 'success', message: 'Connected to AI detection backend.' });
-      setStatusText('Streaming from backend…');
-    }
-  }, [isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (connState === 'error') {
-      toast({ type: 'error', message: 'Backend connection failed. Is the server running?' });
-      setRunning(false);
-    }
-  }, [connState]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleRun = () => {
-    setResults([]);
-    setProgress(0);
-    wsStopAtRef.current = Math.floor(Math.random() * (WS_STUB_MAX - WS_STUB_MIN + 1)) + WS_STUB_MIN;
-    setStatusText(frames.length > 0 ? `Starting simulation over ${frames.length} frames…` : 'Connecting to backend…');
-    setRunning(true);
-    toast({ type: 'info', message: frames.length > 0
-      ? `Running detection on ${frames.length} extracted frames…`
-      : 'Starting WebSocket detection stream…'
-    });
-  };
-
-  const handlePause = () => {
-    abortRef.current?.abort();
-    wsDisconnect();
-    setRunning(false);
-    setStatusText('Paused');
-    toast({ type: 'info', message: 'Detection paused.' });
-  };
-
-  const handleManualComplete = () => {
-    abortRef.current?.abort();
-    wsDisconnect();
-    setRunning(false);
+  const handleComplete = () => {
     if (results.length === 0) {
-      toast({ type: 'warning', message: 'No results yet. Run detection first.' });
-      return;
+      toast({ type: 'warning', message: 'No results yet. Run detection first.' })
+      return
     }
-    toast({ type: 'success', message: `Inspection complete — ${results.length} frames reviewed.` });
-    onComplete?.(results);
-  };
+    toast({ type: 'success', message: `Inspection complete — ${results.length} frames reviewed.` })
+    onComplete?.(results)
+  }
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
-  const defectFrames = results.filter(r => r.defects > 0).length;
-  const totalDetections = results.reduce((sum, r) => sum + r.detections.length, 0);
+  const defectFrames    = results.filter(r => r.defects > 0).length
+  const totalDetections = results.reduce((sum, r) => sum + r.detections.length, 0)
 
-  const modeLabel = frames.length > 0
-    ? { label: running ? 'SIMULATING…' : results.length > 0 ? 'SIMULATION DONE' : 'READY', variant: running ? 'warning' : results.length > 0 ? 'success' : 'neutral' }
-    : { label: { connecting: 'CONNECTING…', connected: 'BACKEND LIVE', closed: 'NOT CONNECTED', error: 'CONNECTION ERROR' }[connState] ?? connState.toUpperCase(),
-        variant: { connecting: 'warning', connected: 'success', closed: 'neutral', error: 'error' }[connState] ?? 'neutral' };
+  const chipLabel   = backendError ? 'BACKEND OFFLINE' : modelInfo ? (modelInfo.mode === 'stub' ? 'STUB MODE' : 'MODEL LOADED') : 'CHECKING…'
+  const chipVariant = backendError ? 'error' : modelInfo ? (modelInfo.mode === 'stub' ? 'warning' : 'success') : 'neutral'
+
+  const modelLabel = modelInfo
+    ? `${modelInfo.mode === 'stub' ? '[STUB] ' : ''}${modelInfo.classes?.length ?? 0} classes · ${modelInfo.defect_labels?.length ?? 0} defect types`
+    : backendError ? 'Cannot reach backend' : 'Fetching model info…'
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -242,9 +169,9 @@ const Detection = ({ frames = [], onComplete }) => {
               <span className="material-symbols-outlined text-[14px]">chevron_right</span>
               <span className="text-primary">Detection</span>
             </nav>
-            <h1 className="font-h1 text-h1 text-primary">Component & Defect Detection</h1>
+            <h1 className="font-h1 text-h1 text-primary">Component &amp; Defect Detection</h1>
           </div>
-          <StatusChip label={modeLabel.label} variant={modeLabel.variant} icon="radio_button_checked" />
+          <StatusChip label={chipLabel} variant={chipVariant} icon="radio_button_checked" />
         </div>
       </header>
 
@@ -253,33 +180,51 @@ const Detection = ({ frames = [], onComplete }) => {
 
           {/* Left: Controls */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-lg overflow-y-auto custom-scrollbar pr-xs">
+
+            {/* Input source summary */}
             <Card title="INPUT SOURCE" padding={true}>
-              <div className="flex items-center gap-md bg-surface p-md border border-dashed border-outline-variant rounded mb-md">
-                <div className="bg-primary-container text-white p-sm rounded-sm">
+              <div className="flex items-center gap-md bg-surface p-md border border-dashed border-outline-variant rounded">
+                <div className="bg-primary-container text-white p-sm rounded-sm shrink-0">
                   <span className="material-symbols-outlined">video_file</span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="font-h2 text-primary text-body-base font-bold">
-                    {frames.length > 0 ? `${frames.length} frames loaded` : 'No frames loaded'}
+                    {frames.length > 0 ? `${frames.length} frames loaded` : 'No frames — go back to Step 1'}
                   </span>
                   <span className="text-body-sm text-on-surface-variant">
-                    {frames.length > 0 ? 'From Stage 1 extraction' : 'Will stream from backend video source'}
+                    {frames.length > 0 ? 'Extracted in Video Framing step' : 'Extract frames first'}
                   </span>
                 </div>
               </div>
             </Card>
 
+            {/* Model info */}
+            <Card title="MODEL INFO" padding={true}>
+              <div className="flex flex-col gap-sm">
+                <div className="flex items-center gap-md bg-surface p-md border border-dashed border-outline-variant rounded">
+                  <div className="bg-primary-container text-white p-sm rounded-sm shrink-0">
+                    <span className="material-symbols-outlined">model_training</span>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-h2 text-primary text-body-base font-bold truncate">
+                      {modelInfo ? (modelInfo.mode === 'stub' ? 'Stub Mode' : 'best.pt') : '…'}
+                    </span>
+                    <span className="text-body-sm text-on-surface-variant">{modelLabel}</span>
+                  </div>
+                </div>
+                {modelInfo?.defect_labels?.length > 0 && (
+                  <div className="flex flex-wrap gap-xs">
+                    {modelInfo.defect_labels.map(l => (
+                      <span key={l} className="text-[10px] font-code bg-error-container text-on-error-container px-xs py-[2px] rounded-sm">{l}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Controls */}
             <Card title="DETECTION CONTROLS" padding={true}>
               <div className="flex flex-col gap-lg">
-                <Select
-                  label="Model Selector"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  options={[
-                    { label: 'RailTrack-V4-HighPrecision', value: 'v4-hp' },
-                    { label: 'Structural-Defect-Lite', value: 'sd-lite' },
-                  ]}
-                />
                 <div className="flex flex-col gap-sm">
                   <div className="flex justify-between items-center">
                     <label className="text-body-sm font-medium text-primary">Confidence Threshold</label>
@@ -288,11 +233,12 @@ const Detection = ({ frames = [], onComplete }) => {
                   <input
                     type="range" min="0.5" max="1" step="0.01"
                     value={confidence}
-                    onChange={(e) => setConfidence(parseFloat(e.target.value))}
+                    onChange={e => setConfidence(parseFloat(e.target.value))}
                     disabled={running}
                     className="w-full accent-primary h-1 bg-surface-container-high rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
+
                 <div className="grid grid-cols-2 gap-sm">
                   <div className="flex items-center gap-sm bg-surface p-sm border border-outline-variant rounded-sm">
                     <span className="material-symbols-outlined text-on-secondary-container" style={{ fontVariationSettings: "'FILL' 1" }}>memory</span>
@@ -305,18 +251,22 @@ const Detection = ({ frames = [], onComplete }) => {
                 </div>
 
                 {!running ? (
-                  <Button variant="primary" icon="play_arrow" className="w-full" onClick={handleRun}>
+                  <Button
+                    variant="primary" icon="play_arrow" className="w-full"
+                    onClick={runDetection}
+                    disabled={frames.length === 0 || backendError}
+                  >
                     RUN DETECTION
                   </Button>
                 ) : (
-                  <Button variant="outline" icon="pause" className="w-full" onClick={handlePause}>
-                    PAUSE
+                  <Button variant="outline" icon="stop" className="w-full" onClick={handleStop}>
+                    STOP
                   </Button>
                 )}
 
                 {results.length > 0 && !running && (
-                  <Button variant="secondary" icon="check_circle" className="w-full" onClick={handleManualComplete}>
-                    COMPLETE & REVIEW
+                  <Button variant="secondary" icon="check_circle" className="w-full" onClick={handleComplete}>
+                    COMPLETE &amp; REVIEW
                   </Button>
                 )}
               </div>
@@ -325,6 +275,7 @@ const Detection = ({ frames = [], onComplete }) => {
 
           {/* Right: Results */}
           <div className="col-span-12 lg:col-span-8 flex flex-col gap-lg overflow-hidden h-full">
+
             {/* Status bar */}
             <div className="bg-surface-container-lowest border border-outline-variant p-panel-padding rounded-lg border-l-4 border-l-primary shadow-sm">
               <div className="flex items-center justify-between mb-sm">
@@ -345,12 +296,21 @@ const Detection = ({ frames = [], onComplete }) => {
             <div className="bg-surface-container-lowest border border-outline-variant rounded-lg flex-1 overflow-hidden flex flex-col shadow-sm">
               <div className="px-panel-padding py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low/30">
                 <span className="font-label-caps text-on-surface-variant text-[11px]">DETECTION RESULTS GALLERY</span>
+                {results.length > 0 && (
+                  <span className="font-code text-[10px] text-on-surface-variant">
+                    {defectFrames} defect frame{defectFrames !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
               <div className="p-panel-padding overflow-y-auto custom-scrollbar flex-1">
                 {results.length === 0 && !running ? (
                   <div className="flex flex-col items-center justify-center h-40 opacity-50 gap-sm">
                     <span className="material-symbols-outlined text-[40px] text-on-surface-variant">image_search</span>
-                    <p className="font-body-sm text-on-surface-variant">No results yet — run detection to start.</p>
+                    <p className="font-body-sm text-on-surface-variant">
+                      {frames.length === 0
+                        ? 'No frames loaded — go back to Step 1 and extract frames.'
+                        : 'Click RUN DETECTION to start.'}
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-md">
@@ -358,7 +318,7 @@ const Detection = ({ frames = [], onComplete }) => {
                       <ResultCard
                         key={idx}
                         {...result}
-                        onClick={() => { setSelectedResult(result); setIsDrawerOpen(true); }}
+                        onClick={() => { setSelected(result); setDrawerOpen(true) }}
                       />
                     ))}
                     {running && (
@@ -397,11 +357,11 @@ const Detection = ({ frames = [], onComplete }) => {
 
       <AnalysisDetailDrawer
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={() => setDrawerOpen(false)}
         result={selectedResult}
       />
     </div>
-  );
-};
+  )
+}
 
-export default Detection;
+export default Detection

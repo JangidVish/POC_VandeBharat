@@ -5,7 +5,9 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(npx vite *)",
-      "Bash(Copy-Item *)"
+      "Bash(Copy-Item *)",
+      "Bash(Get-ChildItem -Recurse -Filter \"best.pt\" \"C:\\\\Users\\\\visha\\\\OneDrive\\\\Desktop\\\\POC_VandeBharat\")",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

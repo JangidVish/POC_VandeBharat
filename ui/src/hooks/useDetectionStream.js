@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-const WS_URL = 'ws://localhost:8000/ws/detections'
+const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000/ws/detections'
 
 const CONNECTION_STATE = {
   CONNECTING: 'connecting',
@@ -54,7 +54,6 @@ export function useDetectionStream(enabled = true) {
       setConnState(CONNECTION_STATE.CLOSED)
       setDetections([])
 
-      // Auto-retry with backoff
       if (retryCount.current < MAX_RETRIES) {
         const delay = Math.min(1000 * 2 ** retryCount.current, 10000)
         retryCount.current += 1
@@ -68,7 +67,7 @@ export function useDetectionStream(enabled = true) {
 
   const disconnect = useCallback(() => {
     clearTimeout(retryRef.current)
-    retryCount.current = MAX_RETRIES  // prevent auto-retry
+    retryCount.current = MAX_RETRIES
     wsRef.current?.close()
     setDetections([])
     setConnState(CONNECTION_STATE.CLOSED)

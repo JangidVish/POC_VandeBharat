@@ -30,7 +30,6 @@ export default function App() {
 
   const handleDetectionComplete = (results) => {
     setDetectedResults(results);
-    setExtractedFrames([]); // free base64 frame thumbnails from RAM — no longer needed after detection
     setWorkflowStep(3);
   };
 
