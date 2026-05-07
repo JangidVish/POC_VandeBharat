@@ -9,18 +9,24 @@ import { AnimatePresence, motion } from 'framer-motion';
 function resultsToTableData(results) {
   if (!results || results.length === 0) return [];
   return results.map((r, i) => {
-    const firstDefect = r.detections?.find(d => d.type === 'defect');
-    const firstDet = r.detections?.[0];
+    const detections = r.detections ?? [];
+    const defects    = detections.filter(d => d.type === 'defect');
+    const firstDet   = detections[0];
     return {
-      imageId: r.id ?? `IMG_${String(i + 1).padStart(5, '0')}`,
-      bogieNo: `B${Math.ceil((i + 1) / 4)}-A`,
-      camera: i % 2 === 0 ? 'LC_CAM_01' : 'RC_CAM_02',
-      component: firstDet?.label ?? 'Unknown',
-      defect: firstDefect?.label ?? 'None',
+      imageId:    r.id ?? `IMG_${String(i + 1).padStart(5, '0')}`,
+      bogieNo:    `B${Math.ceil((i + 1) / 4)}-A`,
+      camera:     i % 2 === 0 ? 'LC_CAM_01' : 'RC_CAM_02',
+      component:  detections.length > 0
+        ? detections.map(d => d.label).join(', ')
+        : 'None detected',
+      defect:     defects.length > 0
+        ? defects.map(d => d.label).join(', ')
+        : 'None',
       bbox: firstDet?.bbox
         ? `[${Object.values(firstDet.bbox).join(', ')}]`
         : '—',
-      thumbnail: r.thumbnail ?? null,
+      thumbnail:  r.thumbnail ?? null,
+      detections,                 // ← full array for the preview modal
     };
   });
 }
@@ -53,69 +59,78 @@ function DetectionPreviewModal({ row, onClose, onApprove, onFlag }) {
         transition={{ duration: 0.18 }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Image side */}
+        {/* Image side — all bounding boxes */}
         <div className="flex-1 bg-surface-container-highest relative group overflow-hidden min-h-[240px]">
           <img
             className="w-full h-full object-cover"
             src={row.thumbnail || PLACEHOLDER}
             alt={row.imageId}
           />
-          <div className="absolute top-[40%] left-[40%] w-[100px] h-[50px] border-2 border-primary bg-primary/10 flex items-start">
-            <span className="bg-primary text-white text-[10px] font-bold px-1 -mt-[20px] whitespace-nowrap">
-              {row.component.toUpperCase()}: 0.98
-            </span>
-          </div>
+          {(row.detections ?? []).map((det, idx) => det.bbox && (
+            <div
+              key={idx}
+              className={`absolute border-2 ${det.type === 'defect' ? 'border-error' : 'border-primary'}`}
+              style={{ top: det.bbox.top, left: det.bbox.left, width: det.bbox.width, height: det.bbox.height }}
+            >
+              <span className={`${det.type === 'defect' ? 'bg-error' : 'bg-primary'} text-white text-[9px] font-bold px-1 absolute -top-[18px] left-0 whitespace-nowrap`}>
+                {det.label} {Math.round((det.confidence ?? 0) * 100)}%
+              </span>
+            </div>
+          ))}
         </div>
 
-        {/* Detail side */}
-        <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-outline-variant p-lg flex flex-col gap-md bg-surface-container-low/20">
+        {/* Detail side — full detections list */}
+        <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-outline-variant p-lg flex flex-col gap-md bg-surface-container-low/20 overflow-y-auto">
           <div className="flex justify-between items-start">
             <h3 className="font-h2 text-primary">DETECTION DETAIL</h3>
             <button onClick={onClose} className="material-symbols-outlined text-on-surface-variant hover:text-primary text-[20px]">close</button>
           </div>
 
-          <div className="flex flex-col gap-sm flex-1">
+          <div className="flex flex-col gap-sm">
             {[
               ['IMAGE ID', row.imageId],
               ['BOGIE NO', row.bogieNo],
-              ['CAMERA', row.camera],
-              ['COMPONENT', row.component],
-              ['BBOX', row.bbox],
+              ['CAMERA',   row.camera],
             ].map(([label, val]) => (
               <div key={label} className="flex justify-between font-body-sm text-[12px]">
                 <span className="text-on-surface-variant">{label}</span>
                 <span className="font-code text-primary">{val}</span>
               </div>
             ))}
-
-            <hr className="border-outline-variant my-xs" />
-
-            <div>
-              <p className="font-label-caps text-[10px] text-on-surface-variant mb-xs">DEFECT STATUS</p>
-              {row.defect !== 'None' ? (
-                <span className="inline-flex items-center gap-xs text-error font-medium text-[13px]">
-                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
-                  {row.defect}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-xs text-[#166534] font-medium text-[13px]">
-                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                  Nominal — no defect
-                </span>
-              )}
-            </div>
-
-            <div>
-              <p className="font-label-caps text-[10px] text-on-surface-variant mb-xs">NOTES</p>
-              <p className="font-body-sm text-on-surface text-[12px] leading-relaxed">
-                {row.defect !== 'None'
-                  ? `Critical defect identified: ${row.defect}. Component requires immediate inspection.`
-                  : 'Component appears within nominal tolerance. No immediate action required.'}
-              </p>
-            </div>
           </div>
 
-          <div className="flex gap-sm mt-auto pt-md border-t border-outline-variant">
+          <hr className="border-outline-variant" />
+
+          {/* All detections */}
+          <div className="flex flex-col gap-xs flex-1">
+            <p className="font-label-caps text-[10px] text-on-surface-variant">
+              DETECTED LABELS ({(row.detections ?? []).length})
+            </p>
+            {(row.detections ?? []).length === 0 ? (
+              <p className="text-[12px] text-on-surface-variant italic">No detections</p>
+            ) : (
+              (row.detections ?? []).map((det, idx) => (
+                <div
+                  key={idx}
+                  className={`flex justify-between items-center px-sm py-xs rounded-sm border text-[12px]
+                    ${det.type === 'defect'
+                      ? 'bg-error-container border-error/30 text-on-error-container'
+                      : 'bg-surface border-outline-variant text-primary'}`}
+                >
+                  <div className="flex items-center gap-xs">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${det.type === 'defect' ? 'bg-error' : 'bg-primary'}`} />
+                    <span className="font-medium">{det.label}</span>
+                    {det.severity && (
+                      <span className="text-[9px] font-bold text-error uppercase">{det.severity}</span>
+                    )}
+                  </div>
+                  <span className="font-code text-[11px] opacity-80">{Math.round((det.confidence ?? 0) * 100)}%</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="flex gap-sm pt-md border-t border-outline-variant">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => { onFlag(row); onClose(); }}>FLAG INCORRECT</Button>
             <Button variant="primary" size="sm" className="flex-1" onClick={() => { onApprove(row); onClose(); }}>APPROVE</Button>
           </div>

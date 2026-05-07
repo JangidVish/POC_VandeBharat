@@ -120,9 +120,14 @@ const DetectionLogTable = ({ data, onViewRow }) => {
                   <td className="px-md py-sm font-code">{row.imageId}</td>
                   <td className="px-md py-sm">{row.bogieNo}</td>
                   <td className="px-md py-sm">{row.camera}</td>
-                  <td className="px-md py-sm font-medium">{row.component}</td>
-                  <td className="px-md py-sm">
-                    <span className={row.defect !== 'None' ? 'text-error font-medium' : 'text-on-surface-variant'}>
+                  <td className="px-md py-sm font-medium max-w-[160px]">
+                    <span className="block truncate" title={row.component}>{row.component}</span>
+                    {row.detections?.length > 0 && (
+                      <span className="text-[10px] text-on-surface-variant">{row.detections.length} label{row.detections.length !== 1 ? 's' : ''}</span>
+                    )}
+                  </td>
+                  <td className="px-md py-sm max-w-[140px]">
+                    <span className={`block truncate ${row.defect !== 'None' ? 'text-error font-medium' : 'text-on-surface-variant'}`} title={row.defect}>
                       {row.defect}
                     </span>
                   </td>

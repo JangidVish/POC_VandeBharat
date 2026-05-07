@@ -51,13 +51,13 @@ class InferenceEngine:
         t = int(time.time() * 1.2) % 10
 
         base = [
-            {"id": 1, "label": "wheel",         "confidence": 0.98, "bbox_px": [80,  200, 200, 220], "defect": False, "severity": None},
-            {"id": 2, "label": "Axel Box",       "confidence": 0.95, "bbox_px": [400, 180, 160, 150], "defect": False, "severity": None},
-            {"id": 3, "label": "Air Brake Hose", "confidence": 0.96, "bbox_px": [240, 280, 130, 110], "defect": False, "severity": None},
+            {"id": 1, "label": "wheel",        "confidence": 0.98, "bbox_px": [80,  200, 200, 220], "defect": False, "severity": None},
+            {"id": 2, "label": "axle_box_cover","confidence": 0.95, "bbox_px": [400, 180, 160, 150], "defect": False, "severity": None},
+            {"id": 3, "label": "brake_lever",  "confidence": 0.96, "bbox_px": [240, 280, 130, 110], "defect": False, "severity": None},
         ]
         defects = [
-            {"id": 4, "label": "Physical Damage",   "confidence": 0.97, "bbox_px": [100, 250, 90,  80],  "defect": True, "severity": "HIGH"},
-            {"id": 5, "label": "Leakage",            "confidence": 0.91, "bbox_px": [90,  260, 110, 90],  "defect": True, "severity": "CRITICAL"},
+            {"id": 4, "label": "rust",    "confidence": 0.87, "bbox_px": [100, 250, 90,  80], "defect": True, "severity": "HIGH"},
+            {"id": 5, "label": "leakage", "confidence": 0.91, "bbox_px": [90,  260, 110, 90], "defect": True, "severity": "CRITICAL"},
         ]
 
         if t in (5, 6, 7):

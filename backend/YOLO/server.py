@@ -25,14 +25,25 @@ MODEL_PATH = os.environ.get(
 CONF_THRESHOLD = float(os.environ.get("YOLO_CONF", "0.35"))
 PORT = int(os.environ.get("YOLO_PORT", "5001"))
 
-# Classes that indicate a defect condition (from data.yaml)
-DEFECT_LABELS = {"Physical Damage", "Leakage", "Deformation/Rust", "Missing Component"}
+# Defect classes — indices 32-42 in best.pt
+DEFECT_LABELS = {
+    "crack", "rust", "leakage", "deformation",
+    "missing_part", "broken", "puncture",
+    "hanging", "loose", "hole", "smoke_emission",
+}
 
 SEVERITY_MAP = {
-    "Physical Damage":    "HIGH",
-    "Leakage":            "CRITICAL",
-    "Deformation/Rust":   "HIGH",
-    "Missing Component":  "MEDIUM",
+    "crack":          "CRITICAL",
+    "leakage":        "CRITICAL",
+    "smoke_emission": "CRITICAL",
+    "broken":         "HIGH",
+    "rust":           "HIGH",
+    "deformation":    "HIGH",
+    "hole":           "HIGH",
+    "missing_part":   "MEDIUM",
+    "puncture":       "MEDIUM",
+    "hanging":        "MEDIUM",
+    "loose":          "LOW",
 }
 
 # ─── Model ────────────────────────────────────────────────────────────────────
