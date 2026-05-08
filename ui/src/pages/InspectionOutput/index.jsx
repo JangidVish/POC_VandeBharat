@@ -23,17 +23,17 @@ function resultsToTableData(results, trainNumber) {
       bbox:       firstDet?.bbox ? `[${Object.values(firstDet.bbox).join(', ')}]` : '—',
       thumbnail:  r.thumbnail ?? null,
       gps:        r.gps ?? '—',
-      timestamp:  r.timestamp ?? '—',
+      timestamp:  r.detected_at ?? '—',
       detections,
     };
   });
 }
 
 const MOCK_DATA = [
-  { imageId: 'IMG_00124', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Brake Pad',        defect: 'Surface Crack', bbox: '[124, 452, 45, 12]',   thumbnail: null, detections: [], gps: '28.6321°N, 77.2341°E', timestamp: '00:00:12' },
-  { imageId: 'IMG_00125', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Secondary Spring', defect: 'None',          bbox: '[890, 112, 120, 120]', thumbnail: null, detections: [], gps: '28.5910°N, 77.2589°E', timestamp: '00:00:24' },
-  { imageId: 'IMG_00128', bogieNo: 'B2-B', camera: 'RC_CAM_02', component: 'Axle Box',         defect: 'Oil Seepage',   bbox: '[445, 320, 80, 80]',  thumbnail: null, detections: [], gps: '28.4773°N, 77.3102°E', timestamp: '00:00:36' },
-  { imageId: 'IMG_00130', bogieNo: 'B3-A', camera: 'LC_CAM_01', component: 'Wheel Flange',     defect: 'None',          bbox: '[210, 560, 200, 150]', thumbnail: null, detections: [], gps: '28.3641°N, 77.4215°E', timestamp: '00:00:48' },
+  { imageId: 'IMG_00124', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Brake Pad',        defect: 'Surface Crack', bbox: '[124, 452, 45, 12]',   thumbnail: null, detections: [], gps: '28.6321°N, 77.2341°E', timestamp: '2026-05-08 09:00:12' },
+  { imageId: 'IMG_00125', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Secondary Spring', defect: 'None',          bbox: '[890, 112, 120, 120]', thumbnail: null, detections: [], gps: '28.5910°N, 77.2589°E', timestamp: '2026-05-08 09:00:24' },
+  { imageId: 'IMG_00128', bogieNo: 'B2-B', camera: 'RC_CAM_02', component: 'Axle Box',         defect: 'Oil Seepage',   bbox: '[445, 320, 80, 80]',  thumbnail: null, detections: [], gps: '28.4773°N, 77.3102°E', timestamp: '2026-05-08 09:00:36' },
+  { imageId: 'IMG_00130', bogieNo: 'B3-A', camera: 'LC_CAM_01', component: 'Wheel Flange',     defect: 'None',          bbox: '[210, 560, 200, 150]', thumbnail: null, detections: [], gps: '28.3641°N, 77.4215°E', timestamp: '2026-05-08 09:00:48' },
 ];
 
 const PLACEHOLDER = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHIreT1_XIkocw5wqa9uPm5RWvhpr5WkPazqwrHltPc-IDgSbLxG9E84qHKLEfTfkjcX9tIVVI049dsLmNLmnSnghVkVPszS4wRFtdOwlx8j1pBh9MZ9OSMakGJioqxb8znozkRPQSZKn7cVsObJjRU7f9baGasbTqMjty53VDOMrt7Yjfgr5yAop3H8qoxgERSwGDgf5Y2PvUqrOGLiyDPtlWXg8aqfSqvTifVPmdTNF_ZdI3BGNBG-m66yLXWiASVouUwHWboA';

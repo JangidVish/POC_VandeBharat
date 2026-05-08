@@ -120,14 +120,15 @@ const Detection = ({ frames = [], onComplete }) => {
         const defectCount = mapped.filter(d => d.type === 'defect').length;
 
         accumulated.push({
-          id:         frames[i].id,
-          status:     defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
-          defects:    defectCount,
-          thumbnail:  frames[i].thumbnail,
-          gps:        frames[i].gps ?? '—',
-          timestamp:  frames[i].timestamp ?? '—',
-          frameTime:  frames[i].frameTime ?? 0,
-          detections: mapped,
+          id:          frames[i].id,
+          status:      defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
+          defects:     defectCount,
+          thumbnail:   frames[i].thumbnail,
+          gps:         frames[i].gps ?? '—',
+          timestamp:   frames[i].timestamp ?? '—',
+          detected_at: new Date().toLocaleString('sv-SE').replace('T', ' '),
+          frameTime:   frames[i].frameTime ?? 0,
+          detections:  mapped,
         });
 
         // Batch UI update every 5 frames
@@ -141,7 +142,9 @@ const Detection = ({ frames = [], onComplete }) => {
         accumulated.push({
           id: frames[i].id, status: 'ERROR', defects: 0,
           thumbnail: frames[i].thumbnail, detections: [],
-          gps: frames[i].gps ?? '—', timestamp: frames[i].timestamp ?? '—', frameTime: frames[i].frameTime ?? 0,
+          gps: frames[i].gps ?? '—', timestamp: frames[i].timestamp ?? '—',
+          detected_at: new Date().toLocaleString('sv-SE').replace('T', ' '),
+          frameTime: frames[i].frameTime ?? 0,
         });
       }
     }

@@ -11,7 +11,6 @@ const DetectionLogTable = ({ data, onViewRow }) => {
     const q = query.trim().toLowerCase();
     if (q) {
       rows = rows.filter(r =>
-        r.imageId.toLowerCase().includes(q) ||
         r.bogieNo.toLowerCase().includes(q) ||
         r.component.toLowerCase().includes(q) ||
         r.defect.toLowerCase().includes(q)
@@ -79,13 +78,11 @@ const DetectionLogTable = ({ data, onViewRow }) => {
           <thead className="sticky top-0 bg-surface-container-low z-10">
             <tr className="font-label-caps text-[10px] text-on-surface-variant border-b border-outline-variant">
               {[
-                { key: 'imageId',   label: 'IMAGE ID' },
-                { key: 'timestamp', label: 'TIME' },
+                { key: 'timestamp', label: 'DATE & TIME' },
+                { key: 'gps',       label: 'GPS LOCATION' },
                 { key: 'bogieNo',   label: 'BOGIE NO' },
-                { key: 'camera',    label: 'CAMERA' },
                 { key: 'component', label: 'COMPONENT' },
                 { key: 'defect',    label: 'DEFECT' },
-                { key: 'gps',       label: 'GPS LOCATION' },
                 { key: null,        label: '' },
               ].map(col => (
                 <th
@@ -104,7 +101,7 @@ const DetectionLogTable = ({ data, onViewRow }) => {
           <tbody className="font-body-sm text-on-surface text-[12px]">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-md py-lg text-center text-on-surface-variant font-body-sm">
+                <td colSpan={6} className="px-md py-lg text-center text-on-surface-variant font-body-sm">
                   No results match your filter.
                 </td>
               </tr>
@@ -118,10 +115,14 @@ const DetectionLogTable = ({ data, onViewRow }) => {
                       : 'border-outline-variant hover:bg-surface-container-low'
                   }`}
                 >
-                  <td className="px-md py-sm font-code">{row.imageId}</td>
-                  <td className="px-md py-sm font-code text-on-surface-variant">{row.timestamp ?? '—'}</td>
+                  <td className="px-md py-sm font-code text-on-surface-variant whitespace-nowrap">{row.timestamp ?? '—'}</td>
+                  <td className="px-md py-sm">
+                    <div className="flex items-center gap-xs">
+                      <span className="material-symbols-outlined text-[13px] text-blue-500" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                      <span className="font-code text-[11px] text-on-surface-variant whitespace-nowrap">{row.gps ?? '—'}</span>
+                    </div>
+                  </td>
                   <td className="px-md py-sm">{row.bogieNo}</td>
-                  <td className="px-md py-sm">{row.camera}</td>
                   <td className="px-md py-sm font-medium max-w-[160px]">
                     <span className="block truncate" title={row.component}>{row.component}</span>
                     {row.detections?.length > 0 && (
@@ -132,12 +133,6 @@ const DetectionLogTable = ({ data, onViewRow }) => {
                     <span className={`block truncate ${row.defect !== 'None' ? 'text-error font-medium' : 'text-on-surface-variant'}`} title={row.defect}>
                       {row.defect}
                     </span>
-                  </td>
-                  <td className="px-md py-sm">
-                    <div className="flex items-center gap-xs">
-                      <span className="material-symbols-outlined text-[13px] text-blue-500" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
-                      <span className="font-code text-[11px] text-on-surface-variant whitespace-nowrap">{row.gps ?? '—'}</span>
-                    </div>
                   </td>
                   <td className="px-md py-sm">
                     <button

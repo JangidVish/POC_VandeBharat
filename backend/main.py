@@ -14,6 +14,7 @@ import json
 import os
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import cv2
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -116,6 +117,7 @@ async def stream_detections(ws: WebSocket):
 
             payload = {
                 "detections": detections,
+                "detected_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "meta": {
                     "frame": frame_count,
                     "fps": current_fps,
