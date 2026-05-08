@@ -1,10 +1,10 @@
 import re
 
-# Indian train numbers are 5 or 6 digits
-TRAIN_PATTERN = re.compile(r"^\d{5,6}$")
+# Bogie numbers: alphanumeric, 4-20 chars, may contain hyphens/slashes
+# Examples: WGS-19847, BWF2019047, LWFAC-123, 12345, ABC/1234
+BOGIE_PATTERN = re.compile(r'^[A-Z0-9][A-Z0-9\-/]{3,19}$', re.IGNORECASE)
 
-# Minimum OCR confidence to accept a candidate
-CONFIDENCE_THRESHOLD = 0.85
+CONFIDENCE_THRESHOLD = 0.5
 
 
 def filter_train_numbers(ocr_results):
@@ -14,10 +14,9 @@ def filter_train_numbers(ocr_results):
         text = item["text"]
         confidence = item["confidence"]
 
-        # Strip spaces that PaddleOCR sometimes inserts mid-number
         cleaned = text.replace(" ", "").strip()
 
-        if TRAIN_PATTERN.match(cleaned) and confidence >= CONFIDENCE_THRESHOLD:
-            candidates.append(cleaned)
+        if BOGIE_PATTERN.match(cleaned) and confidence >= CONFIDENCE_THRESHOLD:
+            candidates.append(cleaned.upper())
 
     return candidates
