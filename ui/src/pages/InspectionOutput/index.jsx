@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 // ── Data helpers ───────────────────────────────────────────────────────────────
 
-function resultsToTableData(results) {
+function resultsToTableData(results, trainNumber) {
   if (!results || results.length === 0) return [];
   return results.map((r, i) => {
     const detections = r.detections ?? [];
@@ -16,7 +16,7 @@ function resultsToTableData(results) {
     const firstDet   = detections[0];
     return {
       imageId:    r.id ?? `IMG_${String(i + 1).padStart(5, '0')}`,
-      bogieNo:    `B${Math.ceil((i + 1) / 4)}-A`,
+      bogieNo:    trainNumber ?? `B${Math.ceil((i + 1) / 4)}-A`,
       camera:     i % 2 === 0 ? 'LC_CAM_01' : 'RC_CAM_02',
       component:  detections.length > 0 ? detections.map(d => d.label).join(', ') : 'None detected',
       defect:     defects.length > 0 ? defects.map(d => d.label).join(', ') : 'None',
@@ -342,13 +342,13 @@ function GalleryView({ data, onApprove, onFlag }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-const InspectionOutput = ({ results = [] }) => {
+const InspectionOutput = ({ results = [], trainNumber = null }) => {
   const toast = useToast();
   const [previewRow, setPreviewRow]   = useState(null);
   const [viewMode, setViewMode]       = useState('list');   // 'list' | 'gallery'
   const [showSyncPopup, setShowSyncPopup] = useState(true);
 
-  const tableData = results.length > 0 ? resultsToTableData(results) : MOCK_DATA;
+  const tableData = results.length > 0 ? resultsToTableData(results, trainNumber) : MOCK_DATA;
 
   const framesProcessed = results.length > 0 ? results.length : 12840;
   const totalDetections = results.length > 0
@@ -414,9 +414,9 @@ const InspectionOutput = ({ results = [] }) => {
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md flex-shrink-0">
           <div>
             <nav className="flex items-center gap-xs text-on-surface-variant font-label-caps text-[10px] mb-xs uppercase">
-              <span>Pipeline Overview</span>
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
               <span>Video Framing</span>
+              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+              <span>Train No. OCR</span>
               <span className="material-symbols-outlined text-[12px]">chevron_right</span>
               <span>Detection</span>
               <span className="material-symbols-outlined text-[12px]">chevron_right</span>
@@ -442,10 +442,22 @@ const InspectionOutput = ({ results = [] }) => {
           </div>
         </header>
 
+        {/* Bogie number banner */}
+        {trainNumber && (
+          <div className="flex items-center gap-md bg-primary/5 border border-primary/20 rounded-sm px-lg py-sm flex-shrink-0">
+            <span className="material-symbols-outlined text-primary text-[20px]">tag</span>
+            <div>
+              <p className="font-label-caps text-[10px] text-on-surface-variant">DETECTED BOGIE NO.</p>
+              <p className="font-display text-[28px] text-primary font-bold tracking-widest leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>{trainNumber}</p>
+            </div>
+            <span className="ml-auto font-label-caps text-[10px] text-primary bg-primary/10 border border-primary/30 px-sm py-[2px] rounded-sm">OCR CONFIRMED</span>
+          </div>
+        )}
+
         {/* KPIs */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter flex-shrink-0">
-          <KPICard label="TOTAL FRAMES PROCESSED"    value={framesProcessed.toLocaleString()} subValue="Stage 1 → Stage 2" subLabel="" />
-          <KPICard label="TOTAL COMPONENTS DETECTED" value={totalDetections.toLocaleString()} subValue={`${avgConf}%`} subLabel="AVG CONF" />
+          <KPICard label="BOGIE NO."                 value={trainNumber ?? '—'}               subValue={trainNumber ? 'OCR Confirmed' : 'Not detected'} subLabel="" />
+          <KPICard label="TOTAL FRAMES PROCESSED"    value={framesProcessed.toLocaleString()} subValue="Stage 1 → Stage 4" subLabel="" />
           <KPICard label="DEFECT FRAMES"             value={defectFrames.toLocaleString()}     subLabel="REQUIRE ATTENTION" variant={defectFrames > 0 ? 'error' : 'success'} />
           <KPICard label="INSPECTION STATUS"         value={inspectionStatus}                  subValue={defectFrames > 0 ? `${defectFrames} frame(s) flagged` : 'All clear'} />
         </section>

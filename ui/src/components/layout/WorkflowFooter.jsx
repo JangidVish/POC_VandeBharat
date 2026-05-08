@@ -2,9 +2,10 @@ import React from 'react';
 
 const WorkflowFooter = ({ currentStep = 1 }) => {
   const steps = [
-    { id: 1, label: 'Video Uploaded' },
-    { id: 2, label: 'Framing Complete' },
-    { id: 3, label: 'Ready For Detection' },
+    { id: 1, label: 'Video Framing' },
+    { id: 2, label: 'Train No. OCR' },
+    { id: 3, label: 'Detection' },
+    { id: 4, label: 'Inspection Output' },
   ];
 
   return (

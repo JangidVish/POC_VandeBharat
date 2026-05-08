@@ -3,6 +3,7 @@ import AppShell from './components/layout/AppShell';
 import VideoFraming from './pages/VideoFraming';
 import Detection from './pages/Detection';
 import InspectionOutput from './pages/InspectionOutput';
+import TrainNumberOCR from './pages/TrainNumberOCR';
 
 const Dashboard = () => (
   <div className="flex-1 flex flex-col items-center justify-center bg-surface gap-md">
@@ -21,6 +22,7 @@ export default function App() {
   const [workflowStep, setWorkflowStep] = useState(1);
 
   const [extractedFrames, setExtractedFrames] = useState([]);
+  const [trainNumber, setTrainNumber]         = useState(null);
   const [detectedResults, setDetectedResults] = useState([]);
 
   const handleFramingComplete = (frames) => {
@@ -28,10 +30,15 @@ export default function App() {
     setWorkflowStep(2);
   };
 
+  const handleOcrComplete = (detectedTrainNumber) => {
+    setTrainNumber(detectedTrainNumber);
+    setWorkflowStep(3);
+  };
+
   const handleDetectionComplete = (results) => {
     setDetectedResults(results);
-    setExtractedFrames([]); // free base64 frame thumbnails from RAM — no longer needed after detection
-    setWorkflowStep(3);
+    setExtractedFrames([]);
+    setWorkflowStep(4);
   };
 
   const renderModule = () => {
@@ -46,13 +53,16 @@ export default function App() {
                 <VideoFraming onComplete={handleFramingComplete} />
               );
               if (workflowStep === 2) return (
+                <TrainNumberOCR onComplete={handleOcrComplete} />
+              );
+              if (workflowStep === 3) return (
                 <Detection
                   frames={extractedFrames}
                   onComplete={handleDetectionComplete}
                 />
               );
-              if (workflowStep === 3) return (
-                <InspectionOutput results={detectedResults} />
+              if (workflowStep === 4) return (
+                <InspectionOutput results={detectedResults} trainNumber={trainNumber} />
               );
               return <VideoFraming onComplete={handleFramingComplete} />;
             default:
@@ -72,7 +82,7 @@ export default function App() {
       {/* POC Step Toggle */}
       <div className="absolute top-20 right-lg z-50 flex gap-sm bg-surface-container-highest/80 backdrop-blur-md p-xs border border-outline-variant shadow-lg rounded-sm">
         <span className="font-label-caps text-[10px] self-center px-sm text-primary">PIPELINE STAGE:</span>
-        {[1, 2, 3].map(step => (
+        {[1, 2, 3, 4].map(step => (
           <button
             key={step}
             onClick={() => setWorkflowStep(step)}
