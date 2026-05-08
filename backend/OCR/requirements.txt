@@ -1,5 +1,4 @@
-paddlepaddle-gpu
-paddleocr
+paddleocr==3.5.0
 opencv-python
 numpy
 flask

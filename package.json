@@ -2,11 +2,15 @@
   "name": "vande-bharat-poc",
   "private": true,
   "scripts": {
-    "start":    "concurrently -n BACKEND,YOLO,OCR,FRONTEND -c bgBlue.bold,bgYellow.bold,bgMagenta.bold,bgGreen.bold \"npm run backend\" \"npm run yolo\" \"npm run ocr\" \"npm run frontend\"",
-    "backend":  "cd backend && venv\\Scripts\\python.exe -m uvicorn main:app --reload --port 8000",
-    "yolo":     "cd backend/YOLO && venv\\Scripts\\python.exe server.py",
-    "ocr":      "cd backend/OCR && venv\\Scripts\\python.exe server.py",
-    "frontend": "cd ui && npm run dev"
+    "start":      "concurrently -n BACKEND,YOLO,OCR,FRONTEND -c bgBlue.bold,bgYellow.bold,bgMagenta.bold,bgGreen.bold \"npm run backend\" \"npm run yolo\" \"npm run ocr\" \"npm run frontend\"",
+    "backend":    "cd backend && venv\\Scripts\\python.exe -m uvicorn main:app --reload --port 8000",
+    "yolo":       "cd backend/YOLO && venv\\Scripts\\python.exe server.py",
+    "ocr":        "cd backend/OCR && venv\\Scripts\\python.exe server.py",
+    "frontend":   "cd ui && npm run dev",
+    "start2":     "concurrently -n BACKEND,YOLO,OCR,FRONTEND -c bgBlue.bold,bgYellow.bold,bgMagenta.bold,bgGreen.bold \"npm run backend2\" \"npm run yolo2\" \"npm run ocr2\" \"npm run frontend\"",
+    "backend2":   "cd backend && python -m uvicorn main:app --reload --port 8000",
+    "yolo2":      "cd backend/YOLO && E:\\Python310\\python.exe server.py",
+    "ocr2":       "cd backend/OCR && E:\\PROJECTS\\VandeBharat\\OCR\\venv\\Scripts\\python.exe server.py"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
