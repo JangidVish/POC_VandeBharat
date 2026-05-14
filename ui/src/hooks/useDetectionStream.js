@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-const WS_URL = 'ws://localhost:8000/ws/detections'
 
 const CONNECTION_STATE = {
   CONNECTING: 'connecting',

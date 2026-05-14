@@ -8,7 +8,7 @@ import AnalysisDetailDrawer from './AnalysisDetailDrawer';
 import { useDetectionStream } from '../../hooks/useDetectionStream';
 import { useToast } from '../../context/ToastContext';
 
-const YOLO_API = 'http://localhost:5001/api/yolo/predict';
+const YOLO_API = 'http://127.0.0.1:5002/api/yolo/predict';
 
 // Convert base64 thumbnail to a Blob for multipart upload
 function b64ToBlob(dataUrl) {
@@ -76,7 +76,7 @@ function buildResultFromWS(wsPayload, confidence) {
     status:     defectCount > 0 ? 'DEFECT DETECTED' : 'NOMINAL',
     defects:    defectCount,
     thumbnail:  null,
-    meta:       { frame: idx, fps: meta?.fps, latency_ms: meta?.latency_ms },
+    meta:       { frame: idx, fps: meta?.fps, latency_ms: meta?.latency_ms, mode: meta?.mode },
     detections: mapped,
   };
 }
@@ -227,7 +227,13 @@ const Detection = ({ frames = [], onComplete }) => {
   const modeLabel = (() => {
     if (running && hasFrames) return { label: `ANALYSING ${results.length}/${frames.length}`, variant: 'warning' };
     if (running) {
-      const map = { connecting: 'CONNECTING…', connected: 'LIVE DETECTION', closed: 'RECONNECTING…', error: 'CONNECTION ERROR' };
+      const modeSuffix = wsMeta?.mode ? ` (${wsMeta.mode.toUpperCase()})` : '';
+      const map = { 
+        connecting: 'CONNECTING…', 
+        connected: `LIVE DETECTION${modeSuffix}`, 
+        closed: 'RECONNECTING…', 
+        error: 'CONNECTION ERROR' 
+      };
       const vmap = { connecting: 'warning', connected: 'success', closed: 'warning', error: 'error' };
       return { label: map[connState] ?? 'CONNECTING…', variant: vmap[connState] ?? 'warning' };
     }

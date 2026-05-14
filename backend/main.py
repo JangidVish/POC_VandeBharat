@@ -26,12 +26,14 @@ from video_processor import VideoProcessor
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 VIDEO_SOURCE = os.environ.get("VIDEO_SOURCE", "../ui/public/Video_2.mp4")
 TARGET_FPS   = int(os.environ.get("TARGET_FPS", "25"))
+# Default to FALSE to ensure we connect to actual model as requested
 USE_STUB     = os.environ.get("USE_STUB", "false").lower() == "true"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"[Startup] Initializing InferenceEngine (mode: {'STUB' if USE_STUB else 'MODEL'})")
     app.state.engine = InferenceEngine(use_stub=USE_STUB)
     yield
     print("[Shutdown] Releasing resources")
@@ -63,7 +65,7 @@ def health():
     return {
         "status": "ok",
         "mode": "stub" if USE_STUB else "yolo-service",
-        "yolo_service": "http://localhost:5001",
+        "yolo_service": "http://127.0.0.1:5002",
         "video_source": str(VIDEO_SOURCE),
     }
 

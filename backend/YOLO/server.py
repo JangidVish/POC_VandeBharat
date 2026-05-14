@@ -23,7 +23,7 @@ MODEL_PATH = os.environ.get(
     os.path.join(os.path.dirname(__file__), "..", "models", "best.pt"),
 )
 CONF_THRESHOLD = float(os.environ.get("YOLO_CONF", "0.35"))
-PORT = int(os.environ.get("YOLO_PORT", "5001"))
+PORT = int(os.environ.get("YOLO_PORT", "5002"))
 
 # Defect classes — indices 32-42 in best.pt
 DEFECT_LABELS = {

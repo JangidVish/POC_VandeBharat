@@ -17,7 +17,7 @@ This starts all four services in parallel using `concurrently`:
 | Label | Service | URL |
 |-------|---------|-----|
 | `BACKEND` | FastAPI detection stream | http://localhost:8000 |
-| `YOLO` | YOLO defect detection | http://localhost:5001 |
+| `YOLO` | YOLO defect detection | http://localhost:5002 |
 | `OCR` | Train number OCR | http://localhost:5000 |
 | `FRONTEND` | React UI (Vite) | http://localhost:5173 |
 
@@ -83,7 +83,7 @@ Verify each service is up before using the UI:
 curl http://localhost:8000/health
 
 # YOLO  (expects a POST, a GET returns 405 — that means it is running)
-curl http://localhost:5001/api/yolo/predict
+curl http://localhost:5002/api/yolo/predict
 
 # OCR   (same — 405 means it is running)
 curl http://localhost:5000/api/ocr/image

@@ -1,5 +1,5 @@
 """
-Model inference wrapper — calls the YOLO microservice (port 5001).
+Model inference wrapper — calls the YOLO microservice (port 5002).
 Falls back to stub mode for UI testing when the service is unavailable.
 """
 
@@ -10,9 +10,8 @@ import cv2
 import numpy as np
 import requests
 
-YOLO_SERVICE_URL = "http://localhost:5001/api/yolo/predict"
-YOLO_TIMEOUT_S = 5
-
+YOLO_SERVICE_URL = "http://127.0.0.1:5002/api/yolo/predict"
+YOLO_TIMEOUT_S = 2.0
 
 class InferenceEngine:
     def __init__(self, use_stub: bool = False, **_kwargs):
@@ -40,7 +39,7 @@ class InferenceEngine:
             resp.raise_for_status()
             return resp.json().get("detections", [])
         except requests.exceptions.ConnectionError:
-            print("[InferenceEngine] YOLO service unreachable — is it running on port 5001?")
+            print("[InferenceEngine] YOLO service unreachable — is it running on port 5002?")
             return []
         except Exception as e:
             print(f"[InferenceEngine] YOLO service error: {e}")

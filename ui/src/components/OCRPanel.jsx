@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 
-const OCR_SERVER = 'http://localhost:5000'
+const OCR_SERVER = 'http://127.0.0.1:5000'
 
 const ACCENT  = '#2563EB'
 const SUCCESS = '#22C55E'
