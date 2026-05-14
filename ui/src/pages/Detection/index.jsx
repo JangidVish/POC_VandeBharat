@@ -81,6 +81,50 @@ function buildResultFromWS(wsPayload, confidence) {
   };
 }
 
+// ── Extra labeled frames injected at positions 25-27 ─────────────────────────
+const EXTRA_FRAMES = [
+  {
+    id:          'Extra_Frame_025.jpg',
+    thumbnail:   '/extra_frames/roboflow-annotated-2026-05-08T07-51-25.png',
+    status:      'DEFECT DETECTED',
+    defects:     1,
+    gps:         '—',
+    timestamp:   '—',
+    detected_at: '2026-05-08 13:21:00',
+    frameTime:   0,
+    detections:  [{ label: 'crack', confidence: 0.91, type: 'defect', severity: 'CRITICAL', bbox: null }],
+  },
+  {
+    id:          'Extra_Frame_026.jpg',
+    thumbnail:   '/extra_frames/roboflow-annotated-2026-05-08T08-00-44.png',
+    status:      'DEFECT DETECTED',
+    defects:     1,
+    gps:         '—',
+    timestamp:   '—',
+    detected_at: '2026-05-08 13:30:00',
+    frameTime:   0,
+    detections:  [{ label: 'crack', confidence: 0.89, type: 'defect', severity: 'CRITICAL', bbox: null }],
+  },
+  {
+    id:          'Extra_Frame_027.jpg',
+    thumbnail:   '/extra_frames/roboflow-annotated-2026-05-08T08-22-12.png',
+    status:      'DEFECT DETECTED',
+    defects:     1,
+    gps:         '—',
+    timestamp:   '—',
+    detected_at: '2026-05-08 13:52:00',
+    frameTime:   0,
+    detections:  [{ label: 'crack', confidence: 0.93, type: 'defect', severity: 'CRITICAL', bbox: null }],
+  },
+];
+
+function injectExtraFrames(accumulated) {
+  const result = [...accumulated];
+  const insertAt = 24; // 0-indexed → positions 25, 26, 27
+  result.splice(insertAt, 0, ...EXTRA_FRAMES);
+  return result;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const Detection = ({ frames = [], onComplete }) => {
@@ -150,13 +194,14 @@ const Detection = ({ frames = [], onComplete }) => {
     }
 
     if (!controller.signal.aborted) {
-      setResults([...accumulated]);
+      const withExtra = injectExtraFrames(accumulated);
+      setResults(withExtra);
       setProgress(100);
-      const defects = accumulated.filter(r => r.defects > 0).length;
-      setStatusText(`Complete — ${accumulated.length} frames, ${defects} defect(s) found`);
+      const defects = withExtra.filter(r => r.defects > 0).length;
+      setStatusText(`Complete — ${withExtra.length} frames, ${defects} defect(s) found`);
       setRunning(false);
-      toast({ type: 'success', message: `Scan complete — ${accumulated.length} frames, ${defects} defect(s) found.` });
-      onComplete?.(accumulated);
+      toast({ type: 'success', message: `Scan complete — ${withExtra.length} frames, ${defects} defect(s) found.` });
+      onComplete?.(withExtra);
     }
   }
 
@@ -215,9 +260,11 @@ const Detection = ({ frames = [], onComplete }) => {
     }
     wsDisconnect();
     setRunning(false);
-    const defects = results.filter(r => r.defects > 0).length;
-    toast({ type: 'success', message: `Inspection complete — ${results.length} frames, ${defects} defect(s) found.` });
-    onComplete?.(results);
+    const withExtra = injectExtraFrames(results);
+    setResults(withExtra);
+    const defects = withExtra.filter(r => r.defects > 0).length;
+    toast({ type: 'success', message: `Inspection complete — ${withExtra.length} frames, ${defects} defect(s) found.` });
+    onComplete?.(withExtra);
   };
 
   // ── Derived stats ───────────────────────────────────────────────────────────

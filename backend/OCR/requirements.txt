@@ -1,4 +1,4 @@
-paddleocr==3.5.0
+easyocr
 opencv-python
 numpy
 flask
