@@ -1,0 +1,6 @@
+path: ./OCR FRAMES.yolov8
+train: train/images
+val: val/images
+
+nc: 3
+names: ['Boogie', 'Car Type', 'Engine']

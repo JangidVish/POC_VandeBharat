@@ -1,9 +1,6 @@
 """
-Train Number OCR Server
-Loads PaddleOCR models ONCE at startup — all subsequent requests are fast.
-
-Run from POC/backend/OCR/:
-    python server.py
+Train Number OCR Server (v2 — High Accuracy)
+Uses YOLOv8 to find the coach number region, then crops and runs PaddleOCR.
 """
 
 import os
@@ -12,13 +9,20 @@ import uuid
 import tempfile
 import json
 import base64
+import time
 
-# Ensure src/ is importable when running from this directory
+# Disable MKLDNN globally to fix "OneDnnContext does not have the input Filter" crash
+os.environ["FLAGS_use_mkldnn"] = "0"
+os.environ["FLAGS_ir_optim"] = "0"
+
+# Ensure src/ is importable
 sys.path.insert(0, os.path.dirname(__file__))
 
 import cv2
+import numpy as np
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from ultralytics import YOLO
 
 from src.preprocess.preprocess import preprocess_frame
 from src.ocr.ocr_engine import run_ocr
@@ -31,6 +35,67 @@ CORS(app)
 
 UPLOAD_DIR = tempfile.gettempdir()
 
+# ── YOLO Model Initialization ────────────────────────────────────────────────
+# Use yolov8n.pt as primary detector for the number region
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "yolov8n.pt")
+yolo_model = None
+
+def get_yolo():
+    global yolo_model
+    if yolo_model is None:
+        print(f"[OCRv2] Loading YOLOv8 region detector: {MODEL_PATH}")
+        yolo_model = YOLO(MODEL_PATH)
+    return yolo_model
+
+# ── Advanced OCR Pipeline ─────────────────────────────────────────────────────
+
+def process_advanced(frame):
+    """
+    Detect -> Crop -> OCR pipeline for higher accuracy.
+    """
+    model = get_yolo()
+    h, w = frame.shape[:2]
+    
+    # 1. Detect ROI (Region of Interest)
+    results = model(frame, conf=0.25, verbose=False)
+    
+    best_ocr_results = []
+    candidates = []
+    crop_info = None
+
+    if len(results) > 0 and len(results[0].boxes) > 0:
+        # Take the best detection
+        box = results[0].boxes[0]
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+        
+        # Add 10% padding
+        pad_h = int((y2 - y1) * 0.1)
+        pad_w = int((x2 - x1) * 0.1)
+        y1, y2 = max(0, y1 - pad_h), min(h, y2 + pad_h)
+        x1, x2 = max(0, x1 - pad_w), min(w, x2 + pad_w)
+        
+        crop_info = [x1, y1, x2 - x1, y2 - y1]
+        roi = frame[y1:y2, x1:x2]
+        
+        # 2. Process ROI
+        processed = preprocess_frame(roi)
+        best_ocr_results = run_ocr(processed)
+        candidates = filter_train_numbers(best_ocr_results)
+        
+    # 3. Fallback to full frame if no candidates found in ROI
+    if not candidates:
+        print("[OCRv2] ROI detection failed or empty, falling back to full frame...")
+        processed = preprocess_frame(frame)
+        full_ocr = run_ocr(processed)
+        candidates = filter_train_numbers(full_ocr)
+        if not best_ocr_results:
+            best_ocr_results = full_ocr
+
+    return {
+        "ocr_results": best_ocr_results,
+        "candidates": candidates,
+        "roi_box": crop_info
+    }
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
@@ -40,9 +105,6 @@ def ocr_image():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
-
     ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
     tmp_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}{ext}")
     file.save(tmp_path)
@@ -52,17 +114,17 @@ def ocr_image():
         if frame is None:
             return jsonify({"error": "Cannot decode image"}), 422
 
-        processed = preprocess_frame(frame)
-        ocr_results = run_ocr(processed)
-        candidates = filter_train_numbers(ocr_results)
+        res = process_advanced(frame)
 
         return jsonify({
-            "detections": ocr_results,
-            "train_number_candidates": candidates,
-            "best": candidates[0] if candidates else None,
+            "detections": res["ocr_results"],
+            "train_number_candidates": res["candidates"],
+            "best": res["candidates"][0] if res["candidates"] else None,
+            "roi": res["roi_box"]
         })
     finally:
-        os.remove(tmp_path)
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.route("/api/ocr/video", methods=["POST"])
@@ -71,9 +133,6 @@ def ocr_video():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
-
     frame_skip = int(request.form.get("frame_skip", 5))
     vote_threshold = int(request.form.get("vote_threshold", 5))
 
@@ -93,13 +152,15 @@ def ocr_video():
                 continue
 
             processed_count += 1
-            processed = preprocess_frame(frame)
-            ocr_results = run_ocr(processed)
-            candidates = filter_train_numbers(ocr_results)
+            res = process_advanced(frame)
 
-            if candidates:
-                vote_manager.add_candidates(candidates)
-                detection_log.append({"frame": frame_count, "candidates": candidates})
+            if res["candidates"]:
+                vote_manager.add_candidates(res["candidates"])
+                detection_log.append({
+                    "frame": frame_count, 
+                    "candidates": res["candidates"],
+                    "roi": res["roi_box"]
+                })
 
         best = vote_manager.get_best_candidate()
 
@@ -111,21 +172,19 @@ def ocr_video():
             "detection_log": detection_log,
         })
     finally:
-        os.remove(tmp_path)
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.route("/api/ocr/video/stream", methods=["POST"])
 def ocr_video_stream():
-    """SSE endpoint — streams per-frame progress while processing the video."""
+    """SSE endpoint for real-time progress in the UI."""
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
-
     vote_threshold = int(request.form.get("vote_threshold", 5))
-    interval_ms    = float(request.form.get("interval_ms", 500))   # time-based seeking
+    interval_ms    = float(request.form.get("interval_ms", 500))
 
     ext      = os.path.splitext(file.filename)[1].lower() or ".mp4"
     tmp_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}{ext}")
@@ -146,8 +205,7 @@ def ocr_video_stream():
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             duration_ms  = (total_frames / source_fps) * 1000
 
-            # Build the exact list of timestamps to seek — mirrors Stage 1 logic
-            step_ms     = max(interval_ms, 40)          # floor at 40ms = 25fps
+            step_ms     = max(interval_ms, 40)
             timestamps  = []
             t = 0.0
             while t <= duration_ms:
@@ -155,16 +213,11 @@ def ocr_video_stream():
                 t += step_ms
             total_to_process = len(timestamps)
 
-            print(f"[OCR-STREAM] Video: {source_fps:.1f} fps  duration={duration_ms/1000:.1f}s"
-                  f"  interval={step_ms:.0f}ms  frames_to_process={total_to_process}"
-                  f"  vote_threshold={vote_threshold}")
-
             yield _sse({
                 "type": "init",
-                "total_frames": total_to_process,   # what the user cares about
+                "total_frames": total_to_process,
                 "source_fps": round(source_fps, 2),
                 "interval_ms": step_ms,
-                "vote_threshold": vote_threshold,
             })
 
             vote_manager    = VoteManager(threshold=vote_threshold)
@@ -173,93 +226,53 @@ def ocr_video_stream():
             for idx, seek_ms in enumerate(timestamps):
                 cap.set(cv2.CAP_PROP_POS_MSEC, seek_ms)
                 ret, frame = cap.read()
-                if not ret:
-                    continue
+                if not ret: continue
 
                 processed_count += 1
+                
+                # Use Advanced Pipeline
+                res = process_advanced(frame)
+                
+                if res["candidates"]:
+                    vote_manager.add_candidates(res["candidates"])
 
-                # ── OCR pipeline ──────────────────────────────────────────────
-                preprocessed = preprocess_frame(frame)
-                ocr_results  = run_ocr(preprocessed)
-                candidates   = filter_train_numbers(ocr_results)
-
-                if candidates:
-                    vote_manager.add_candidates(candidates)
-
-                # ── Thumbnail (160x90 JPEG, base64) ───────────────────────────
+                # Thumbnail for UI
                 thumb    = cv2.resize(frame, (160, 90))
                 _, buf   = cv2.imencode(".jpg", thumb, [cv2.IMWRITE_JPEG_QUALITY, 55])
                 thumb_b64 = base64.b64encode(buf).decode()
 
-                if candidates:
-                    print(f"[OCR-STREAM] [{processed_count}/{total_to_process}]"
-                          f"  t={seek_ms/1000:.2f}s  candidates={candidates}"
-                          f"  votes={dict(vote_manager.counter)}")
-                elif processed_count % 10 == 0:
-                    print(f"[OCR-STREAM] [{processed_count}/{total_to_process}]"
-                          f"  t={seek_ms/1000:.2f}s  no match")
-
                 yield _sse({
                     "type": "frame",
                     "frame": processed_count,
-                    "processed": processed_count,
-                    "total": total_to_process,
                     "progress": round((idx + 1) / total_to_process * 100, 1),
                     "timestamp_ms": round(seek_ms, 1),
-                    "candidates": candidates,
+                    "candidates": res["candidates"],
                     "votes": vote_manager.get_all_votes(),
                     "thumbnail": thumb_b64,
                     "ocr_texts": [{"text": d["text"], "confidence": round(d["confidence"], 3)}
-                                  for d in ocr_results],
+                                  for d in res["ocr_results"]],
+                    "roi": res["roi_box"]
                 })
 
-            cap.release()
-            cap = None
-
             best = vote_manager.get_best_candidate()
-            print(f"[OCR-STREAM] DONE  best={best}  votes={vote_manager.get_all_votes()}"
-                  f"  processed={processed_count}/{total_to_process}")
-
             yield _sse({
                 "type": "done",
                 "best": best,
                 "votes": vote_manager.get_all_votes(),
-                "frames_read": total_to_process,
                 "frames_processed": processed_count,
             })
 
         except Exception as exc:
-            print(f"[OCR-STREAM] ERROR: {exc}")
             yield _sse({"type": "error", "message": str(exc)})
-
         finally:
-            if cap is not None:
-                cap.release()
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+            if cap: cap.release()
+            if os.path.exists(tmp_path): os.remove(tmp_path)
 
-    return app.response_class(
-        generate(),
-        mimetype="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
-
-
-# ── Entry point ───────────────────────────────────────────────────────────────
+    return app.response_class(generate(), mimetype="text/event-stream")
 
 if __name__ == "__main__":
     print("\n" + "=" * 55)
-    print("  Train Number OCR Server")
-    print("  Loading models (one-time, ~5s)...")
-    print("=" * 55)
-
-    # Warmup — forces model load before first request
-    import numpy as np
-    _blank = np.zeros((100, 300, 3), dtype="uint8")
-    run_ocr(_blank)
-
-    print("  Models warmed up.")
-    print("  Server ready at http://localhost:5000")
+    print("  Vande Bharat OCR v2 (High Accuracy)")
+    print("  Status: YOLO + PaddleOCR Hybrid Ready")
     print("=" * 55 + "\n")
-
     app.run(host="0.0.0.0", port=5000, debug=False)

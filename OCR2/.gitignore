@@ -1,0 +1,39 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+data/
+
+# PaddleOCR downloaded models cache
+~/.paddleocr/
+inference/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Test / output artifacts
+data/videos/*
+data/frames/*
+data/outputs/*
+!data/videos/.gitkeep
+!data/frames/.gitkeep
+!data/outputs/.gitkeep
+
+# Preprocessed debug images
+*_preprocessed.jpg
+*_preprocessed.png
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node / Frontend
+node_modules/
+dist/
+.eslintcache
+.vite/

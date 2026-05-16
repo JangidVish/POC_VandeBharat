@@ -1,0 +1,12 @@
+train: train/images
+val: val/images
+
+nc: 3
+names: ['Boogie', 'Car Type', 'Engine']
+
+roboflow:
+  workspace: oms-workspace-smzyo
+  project: oms-workspace-smzyo
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/oms-workspace-smzyo/oms-workspace-smzyo/dataset

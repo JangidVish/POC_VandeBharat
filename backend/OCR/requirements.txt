@@ -1,4 +1,6 @@
-easyocr
+paddleocr
+paddlepaddle-gpu
+ultralytics
 opencv-python
 numpy
 flask

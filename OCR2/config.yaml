@@ -1,0 +1,129 @@
+# ============================================================
+#  Vande Bharat Railway Inspection System — Master Config
+# ============================================================
+
+model:
+  architecture: yolov8
+  variant: yolov8n              # n = 3.2M params (better for fast OCR extraction)
+  pretrained: true
+  pretrained_weights: yolov8n.pt
+
+  tasks:
+    detection: true
+    ocr: true                   # Bogie number extraction via EasyOCR
+
+  ocr:
+    engine: easyocr
+    languages: [en]
+    enabled: true
+
+data:
+  dataset_path: "OCR FRAMES.yolov8"
+  train: "OCR FRAMES.yolov8/train/images"
+  val:   "OCR FRAMES.yolov8/val/images"
+  test:  ""                     # No test split in current dataset
+  img_size: 640
+  batch_size: 16                # Increased for stability on RTX 4050
+  num_workers: 0                # Windows: keep 0
+
+  # 3 OCR specific classes
+  class_names:
+    - Boogie
+    - Car Type
+    - Engine
+
+  num_component_classes: 3
+  num_defect_classes: 0
+
+training:
+  # Stage 1 (freeze backbone): python train.py --freeze 10 --epochs 100
+  # Stage 2 (full fine-tune):  python train.py --resume <last.pt> --epochs 200
+  epochs: 150
+  patience: 30
+
+  optimizer: AdamW              # Faster convergence than SGD for fine-tuning
+  lr0: 0.0005                   # Lower LR to prevent overfitting on small dataset
+  lrf: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+
+  cos_lr: true
+  warmup_epochs: 5              # More warmup — small dataset needs gentle ramp
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+  dropout: 0.1                  # Regularisation — important for small dataset
+  amp: true
+
+augmentation:
+  # Photometric — simulate outdoor/industrial lighting
+  hsv_h: 0.02
+  hsv_s: 0.8
+  hsv_v: 0.5
+
+  # Geometric — camera angle variation
+  degrees: 15.0
+  translate: 0.15
+  scale: 0.6
+  shear: 3.0
+  perspective: 0.0002
+  flipud: 0.0                   # Unrealistic for rail inspection
+  fliplr: 0.5
+
+  # Advanced mixing — critical for 286-image dataset
+  mosaic: 1.0
+  mixup: 0.2
+  copy_paste: 0.15              # Copy-paste rare defect instances
+
+  # Industrial / domain degradation
+  motion_blur: 0.4
+  gaussian_noise: 0.3
+  jpeg_compression: 0.3
+
+inference:
+  conf_thresh: 0.30             # Higher than default to reduce false positives
+  iou_thresh: 0.45
+  max_det: 100
+  device: cuda
+
+  # Per-class confidence thresholds (overrides conf_thresh per defect type)
+  # Lower = more sensitive; raise if too many false alarms.
+  per_class_conf:
+    17: 0.35   # Physical Damage — high stakes, keep sensitivity
+    18: 0.30   # Leakage
+    19: 0.30   # Deformation/Rust
+    20: 0.35   # Missing Component
+
+  sahi:
+    enabled: true
+    slice_height: 320
+    slice_width: 320
+    overlap_height_ratio: 0.2
+    overlap_width_ratio: 0.2
+
+  # Component-defect association: max pixel distance (normalised to image diagonal)
+  # to link a defect box to a component box.
+  association_iou_thresh: 0.05   # min IoU for direct overlap association
+  association_dist_thresh: 0.15  # max normalised centroid distance for fallback
+
+  # Video processing
+  frame_skip: 0                  # 0 = every frame. 2 = every 3rd frame.
+  min_sharpness: 50.0            # Laplacian variance threshold for frame quality
+
+deployment:
+  export_format: onnx
+  half_precision: true
+  dynamic_axes: false
+  opset_version: 17
+
+  video:
+    fps_target: 30
+    buffer_size: 10
+    skip_frames: 0
+
+logging:
+  project: runs
+  run_name: railway_inspection_v1
+  save_dir: runs/
+  log_interval: 10
+  val_interval: 1
