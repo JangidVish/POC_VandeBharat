@@ -301,14 +301,14 @@ const Detection = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      <header className="max-w-[1440px] w-full mx-auto px-lg py-md border-b border-outline-variant bg-surface-container-lowest">
+      <header className="w-full px-lg py-md border-b border-outline-variant bg-surface-container-lowest">
         <div className="flex justify-between items-end">
           <div className="flex flex-col gap-xs">
-            <nav className="flex items-center gap-xs font-label-caps text-on-surface-variant text-[11px]">
+            <nav className="flex items-center gap-xs font-label-caps text-on-surface-variant text-[12px]">
               <span>Pipeline Overview</span>
-              <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+              <span className="material-symbols-outlined text-[16px]">chevron_right</span>
               <span>Video Framing</span>
-              <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+              <span className="material-symbols-outlined text-[16px]">chevron_right</span>
               <span className="text-primary">Detection</span>
             </nav>
             <h1 className="font-h1 text-h1 text-primary">Component & Defect Detection</h1>
@@ -317,18 +317,18 @@ const Detection = () => {
         </div>
       </header>
 
-      <main className="max-w-[1440px] w-full mx-auto px-lg py-lg flex-1 overflow-hidden flex flex-col gap-lg">
-        <div className="grid grid-cols-12 gap-lg h-full">
+      <main className="w-full px-lg py-lg flex-1 overflow-hidden flex flex-col gap-lg lg:gap-xl">
+        <div className="grid grid-cols-12 gap-md lg:gap-lg xl:gap-xl h-full">
 
           {/* Left: Controls */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-lg overflow-y-auto custom-scrollbar pr-xs">
-            <Card title="INPUT SOURCE" padding={true}>
-              <div className="flex items-center gap-md bg-surface p-md border border-dashed border-outline-variant rounded mb-md">
+          <div className="col-span-12 lg:col-span-4 xl:col-span-4 flex flex-col gap-lg overflow-y-auto custom-scrollbar pr-xs min-w-0">
+            <Card title="INPUT SOURCE" padding={true} className="flex-shrink-0">
+              <div className="flex items-center gap-sm lg:gap-md bg-surface p-sm lg:p-md border border-dashed border-outline-variant rounded mb-md min-w-0">
                 <div className="bg-primary-container text-white p-sm rounded-sm">
                   <span className="material-symbols-outlined">{hasFrames ? 'photo_library' : 'live_tv'}</span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-h2 text-primary text-body-base font-bold">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-h2 text-primary text-body-base font-bold truncate">
                     {hasFrames ? `${frames.length} frames from Stage 1` : 'Live backend stream'}
                   </span>
                   <span className="text-body-sm text-on-surface-variant">
@@ -340,36 +340,36 @@ const Detection = () => {
 
             <Card title="DETECTION CONTROLS" padding={true}>
               <div className="flex flex-col gap-lg">
-                <div className="flex items-center gap-sm bg-surface-container-low p-sm border border-outline-variant rounded-sm">
+                <div className="flex items-center gap-xs lg:gap-sm bg-surface-container-low p-xs lg:p-sm border border-outline-variant rounded-sm min-w-0">
                   <span className="material-symbols-outlined text-on-secondary-container text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>model_training</span>
                   <div className="flex flex-col">
-                    <span className="font-label-caps text-[10px] text-on-surface-variant">ACTIVE MODEL</span>
-                    <span className="font-code text-[11px] text-primary font-bold">railway_inspection_v1-4 / best.pt</span>
+                  <span className="font-label-caps text-[10px] lg:text-[11px] text-on-surface-variant">ACTIVE MODEL</span>
+                    <span className="font-code text-[12px] lg:text-[13px] text-primary font-bold">railway_inspection_v1-4 / best.pt</span>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-sm">
                   <div className="flex justify-between items-center">
-                    <label className="text-body-sm font-medium text-primary">Confidence Threshold</label>
-                    <span className="text-code text-on-primary-container font-bold">{confidence.toFixed(2)}</span>
+                    <label className="text-body-sm text-[14px] font-medium text-primary">Confidence Threshold</label>
+                    <span className="text-code text-[14px] text-on-primary-container font-bold">{confidence.toFixed(2)}</span>
                   </div>
                   <input
                     type="range" min="0.1" max="1" step="0.01"
                     value={confidence}
                     onChange={(e) => setConfidence(parseFloat(e.target.value))}
                     disabled={running}
-                    className="w-full accent-primary h-1 bg-surface-container-high rounded-lg appearance-none cursor-pointer"
+                    className="w-full accent-primary h-1.5 bg-surface-container-high rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-sm">
                   <div className="flex items-center gap-sm bg-surface p-sm border border-outline-variant rounded-sm">
                     <span className="material-symbols-outlined text-on-secondary-container" style={{ fontVariationSettings: "'FILL' 1" }}>memory</span>
-                    <span className="font-label-caps text-[10px]">GPU ACTIVE</span>
+                    <span className="font-label-caps text-[11px]">GPU ACTIVE</span>
                   </div>
-                  <div className="flex items-center gap-sm bg-surface p-sm border border-outline-variant rounded-sm">
-                    <span className="material-symbols-outlined text-on-secondary-container" style={{ fontVariationSettings: "'FILL' 1" }}>dns</span>
-                    <span className="font-label-caps text-[10px]">YOLO SERVICE</span>
+                  <div className="flex items-center gap-xs lg:gap-sm bg-surface p-xs lg:p-sm border border-outline-variant rounded-sm min-w-0">
+                    <span className="material-symbols-outlined text-on-secondary-container text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>dns</span>
+                    <span className="font-label-caps text-[10px] lg:text-[11px]">YOLO SERVICE</span>
                   </div>
                 </div>
 
@@ -393,7 +393,7 @@ const Detection = () => {
           </div>
 
           {/* Right: Results */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col gap-lg overflow-hidden h-full">
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-lg overflow-hidden h-full min-w-0">
             {/* Status bar */}
             <div className="bg-surface-container-lowest border border-outline-variant p-panel-padding rounded-lg border-l-4 border-l-primary shadow-sm">
               <div className="flex items-center justify-between mb-sm">
@@ -418,7 +418,7 @@ const Detection = () => {
             {/* Results Gallery */}
             <div className="bg-surface-container-lowest border border-outline-variant rounded-lg flex-1 overflow-hidden flex flex-col shadow-sm">
               <div className="px-panel-padding py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low/30">
-                <span className="font-label-caps text-on-surface-variant text-[11px]">DETECTION RESULTS GALLERY</span>
+                <span className="font-label-caps text-on-surface-variant text-[12px]">DETECTION RESULTS GALLERY</span>
                 {running && !hasFrames && (
                   <span className="font-label-caps text-[10px] text-primary animate-pulse">● LIVE</span>
                 )}
@@ -455,16 +455,16 @@ const Detection = () => {
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-md">
               <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-lg shadow-sm">
-                <span className="font-label-caps text-on-surface-variant block mb-base text-[10px]">TOTAL DETECTIONS</span>
-                <span className="font-display text-display text-primary">{totalDetections.toLocaleString()}</span>
+                <span className="font-label-caps text-on-surface-variant block mb-base text-[11px]">TOTAL DETECTIONS</span>
+                <span className="font-display text-display text-primary text-[32px] lg:text-[36px]">{totalDetections.toLocaleString()}</span>
               </div>
-              <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-lg shadow-sm">
-                <span className="font-label-caps text-on-surface-variant block mb-base text-[10px]">FRAMES ANALYSED</span>
-                <span className="font-display text-display text-primary">{results.length.toLocaleString()}</span>
+              <div className="bg-surface-container-lowest border border-outline-variant p-md lg:p-lg rounded-lg shadow-sm">
+                <span className="font-label-caps text-on-surface-variant block mb-base text-[11px]">FRAMES ANALYSED</span>
+                <span className="font-display text-display text-primary text-[32px] lg:text-[36px]">{results.length.toLocaleString()}</span>
               </div>
-              <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-lg border-b-4 border-b-error shadow-sm">
-                <span className="font-label-caps text-on-surface-variant block mb-base text-[10px]">DEFECT FRAMES</span>
-                <span className="font-display text-display text-error">{defectFrames.toLocaleString()}</span>
+              <div className="bg-surface-container-lowest border border-outline-variant p-md lg:p-lg rounded-lg border-b-4 border-b-error shadow-sm">
+                <span className="font-label-caps text-on-surface-variant block mb-base text-[11px]">DEFECT FRAMES</span>
+                <span className="font-display text-display text-error text-[32px] lg:text-[36px]">{defectFrames.toLocaleString()}</span>
               </div>
             </div>
           </div>

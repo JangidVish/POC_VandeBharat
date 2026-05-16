@@ -21,19 +21,19 @@ const PipelineBar = () => {
   const currentStepData = steps.find((s) => s.id === currentStep);
 
   return (
-    <div className="bg-surface-container-lowest border-b border-outline-variant px-md lg:px-lg py-sm flex items-center justify-between gap-md flex-shrink-0">
+    <div className="bg-surface-container-lowest border-b border-outline-variant px-md lg:px-lg py-sm lg:py-md flex items-center justify-between gap-md flex-shrink-0">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-xs min-w-0 overflow-hidden">
-        <nav className="flex items-center gap-xs font-label-caps text-[10px] lg:text-[11px] text-outline whitespace-nowrap">
+        <nav className="flex items-center gap-xs font-label-caps text-[11px] lg:text-[12px] text-outline whitespace-nowrap">
           <span className="hidden sm:inline">Pipeline</span>
-          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+          <span className="material-symbols-outlined text-[14px] lg:text-[16px]">chevron_right</span>
           <span className="text-primary font-bold">{currentStepData?.label ?? 'Video Framing'}</span>
         </nav>
       </div>
 
       {/* Right: Step Buttons */}
       <div className="flex items-center gap-xs flex-shrink-0">
-        <span className="font-label-caps text-[9px] text-outline mr-1 hidden xl:inline">PROCESS STAGE:</span>
+        <span className="font-label-caps text-[10px] lg:text-[11px] text-outline mr-1 hidden xl:inline">PROCESS STAGE:</span>
         {steps.map((step, index) => {
           const isCompleted = step.id < activeStep;
           const isCurrent = step.id === currentStep;
@@ -41,11 +41,11 @@ const PipelineBar = () => {
           return (
             <React.Fragment key={step.id}>
               {index > 0 && (
-                <div className={`w-2 lg:w-4 h-px hidden sm:block ${isCompleted ? 'bg-primary' : 'bg-outline-variant'}`} />
+                <div className={`w-3 lg:w-6 xl:w-8 h-px hidden sm:block ${isCompleted ? 'bg-primary' : 'bg-outline-variant'}`} />
               )}
               <button
                 onClick={() => navigate(step.path)}
-                className={`flex items-center gap-xs px-2 lg:px-sm py-1 font-label-caps text-[9px] lg:text-[10px] border transition-all rounded-sm cursor-pointer whitespace-nowrap
+                className={`flex items-center gap-xs px-3 lg:px-sm xl:px-md py-1.5 lg:py-2 font-label-caps text-[10px] lg:text-[11px] xl:text-[12px] border transition-all rounded-sm cursor-pointer whitespace-nowrap
                   ${isCurrent
                     ? 'bg-primary text-on-primary border-primary font-bold shadow-sm'
                     : isCompleted
@@ -54,7 +54,7 @@ const PipelineBar = () => {
                   }`}
               >
                 {isCompleted && (
-                  <span className="material-symbols-outlined text-[12px] font-bold">check</span>
+                  <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                 )}
                 <span className="hidden lg:inline">{step.label}</span>
                 <span className="lg:hidden">{step.id}</span>

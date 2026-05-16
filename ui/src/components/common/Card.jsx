@@ -14,7 +14,7 @@ const Card = ({
   noBorder = false
 }) => {
   return (
-    <div className={`bg-surface-container-lowest ${noBorder ? '' : 'border border-outline-variant'} rounded-default overflow-hidden ${className}`}>
+    <div className={`bg-surface-container-lowest ${noBorder ? '' : 'border border-outline-variant'} rounded-default ${className}`}>
       {(title || Icon || extra) && (
         <div className="px-panel-padding py-sm border-b border-outline-variant flex items-center justify-between bg-surface-container-low/50">
           <div className="flex items-center gap-sm">

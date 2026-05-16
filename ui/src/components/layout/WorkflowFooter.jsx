@@ -19,9 +19,9 @@ const WorkflowFooter = () => {
 
   return (
     <footer className="bg-surface-container-low border-t border-outline-variant z-50 flex-shrink-0">
-      <div className="flex justify-between items-center w-full px-lg py-sm">
+      <div className="flex justify-between items-center w-full px-lg py-sm lg:py-md">
         {/* Progress Stepper */}
-        <div className="flex items-center gap-xs sm:gap-md overflow-x-auto">
+        <div className="flex items-center gap-xs sm:gap-sm lg:gap-md flex-shrink min-w-0">
           {steps.map((step, index) => {
             const isCompleted = step.id < activeStep;
             const isCurrent = step.id === currentStep;
@@ -42,7 +42,7 @@ const WorkflowFooter = () => {
                     </span>
                   ) : (
                     <span
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${
+                      className={`w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 flex items-center justify-center text-[11px] lg:text-[12px] font-bold ${
                         isCurrent
                           ? 'border-primary text-primary'
                           : 'border-outline-variant text-on-surface-variant'
@@ -52,7 +52,7 @@ const WorkflowFooter = () => {
                     </span>
                   )}
                   <span
-                    className={`font-label-caps text-[10px] hidden sm:inline ${
+                    className={`font-label-caps text-[11px] lg:text-[12px] hidden sm:inline ${
                       isCurrent || isCompleted ? 'text-primary' : 'text-on-surface-variant'
                     }`}
                   >
@@ -61,7 +61,7 @@ const WorkflowFooter = () => {
                 </button>
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-6 sm:w-8 h-px flex-shrink-0 transition-colors ${
+                    className={`w-4 sm:w-8 lg:w-10 h-px flex-shrink-0 transition-colors ${
                       isCompleted ? 'bg-primary' : 'bg-outline-variant'
                     }`}
                   />
@@ -73,10 +73,10 @@ const WorkflowFooter = () => {
 
         {/* Branding/System Status */}
         <div className="hidden sm:flex items-center gap-lg flex-shrink-0">
-          <span className="font-label-caps text-[10px] text-on-surface-variant">
+          <span className="font-label-caps text-[11px] lg:text-[12px] text-on-surface-variant">
             SYSTEM STATUS: <span className="text-primary font-bold">READY</span>
           </span>
-          <span className="font-label-caps text-[10px] text-primary">
+          <span className="font-label-caps text-[11px] lg:text-[12px] text-primary">
             © 2026 | VER. 4.2.0-STABLE
           </span>
         </div>

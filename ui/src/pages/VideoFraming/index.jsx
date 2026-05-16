@@ -264,7 +264,7 @@ const VideoFraming = () => {
   return (
     <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
       {/* Left Column: Controls */}
-      <aside className="w-full md:w-[380px] border-r border-outline-variant bg-surface-container-low p-panel-padding overflow-y-auto custom-scrollbar">
+      <aside className="w-full md:w-[380px] xl:w-[420px] 2xl:w-[460px] border-r border-outline-variant bg-surface-container-low p-panel-padding overflow-y-auto custom-scrollbar">
         <div className="flex flex-col gap-lg">
           {/* Video Upload Card */}
           <Card title="Video Source" icon="videocam" padding={false}>
@@ -287,25 +287,25 @@ const VideoFraming = () => {
                     : 'border-outline-variant bg-surface-container-low hover:bg-surface-container-high'
                   }`}
               >
-                <span className="material-symbols-outlined text-on-surface-variant text-[32px] group-hover:text-primary transition-colors">upload_file</span>
+                <span className="material-symbols-outlined text-on-surface-variant text-[36px] lg:text-[40px] group-hover:text-primary transition-colors">upload_file</span>
                 <div className="text-center">
-                  <p className="font-body-base text-primary font-medium">
+                  <p className="font-body-base text-primary font-medium text-[15px] lg:text-[16px]">
                     {isDragging ? 'Drop video here' : 'Drag & drop or click to upload'}
                   </p>
-                  <p className="font-label-caps text-on-surface-variant mt-xs text-[10px]">MP4, AVI, MOV (MAX 2GB)</p>
+                  <p className="font-label-caps text-on-surface-variant mt-xs text-[11px]">MP4, AVI, MOV (MAX 2GB)</p>
                 </div>
               </div>
 
               <div className="flex flex-col gap-xs pt-xs">
-                <div className="flex justify-between font-label-caps text-on-surface-variant text-[10px]">
+                <div className="flex justify-between font-label-caps text-on-surface-variant text-[11px] lg:text-[12px]">
                   <span>FILENAME</span>
-                  <span className="text-primary truncate max-w-[180px]">{videoFile?.name ?? '—'}</span>
+                  <span className="text-primary truncate max-w-[200px] xl:max-w-[240px]">{videoFile?.name ?? '—'}</span>
                 </div>
-                <div className="flex justify-between font-label-caps text-on-surface-variant text-[10px]">
+                <div className="flex justify-between font-label-caps text-on-surface-variant text-[11px] lg:text-[12px]">
                   <span>DURATION</span>
                   <span className="text-primary">{videoDuration != null ? formatDuration(videoDuration) : '—'}</span>
                 </div>
-                <div className="flex justify-between font-label-caps text-on-surface-variant text-[10px]">
+                <div className="flex justify-between font-label-caps text-on-surface-variant text-[11px] lg:text-[12px]">
                   <span>SIZE</span>
                   <span className="text-primary">{videoFile ? `${(videoFile.size / 1024 / 1024).toFixed(1)} MB` : '—'}</span>
                 </div>
@@ -335,13 +335,13 @@ const VideoFraming = () => {
                   disabled={isExtracting}
                 />
               </div>
-              <p className="font-label-caps text-on-surface-variant text-[10px]">
+              <p className="font-label-caps text-on-surface-variant text-[11px]">
                 Changing either field updates the other — they represent the same setting.
               </p>
               {estimatedFrames != null && (
                 <div className="flex justify-between items-center bg-surface-container-high px-sm py-xs rounded-sm border border-outline-variant">
-                  <span className="font-label-caps text-on-surface-variant text-[10px]">EST. FRAMES</span>
-                  <span className="font-code text-primary text-[12px] font-bold">~{estimatedFrames.toLocaleString()}</span>
+                  <span className="font-label-caps text-on-surface-variant text-[11px]">EST. FRAMES</span>
+                  <span className="font-code text-primary text-[14px] font-bold">~{estimatedFrames.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex flex-col gap-sm pt-sm">
@@ -369,10 +369,10 @@ const VideoFraming = () => {
               value={`${progress}%`}
             />
             <div className="flex justify-between items-center mt-md">
-              <span className="font-body-sm text-on-surface-variant text-[12px]">
+              <span className="font-body-sm text-on-surface-variant text-[13px]">
                 {frames.length > 0 ? `Last: ${frames[frames.length - 1].id}` : 'No frames yet'}
               </span>
-              <span className="font-body-sm text-on-surface-variant text-[12px]">{frames.length} frames</span>
+              <span className="font-body-sm text-on-surface-variant text-[13px]">{frames.length} frames</span>
             </div>
             {isExtracting && (
               <div className="flex gap-xs mt-md">
@@ -395,7 +395,7 @@ const VideoFraming = () => {
       {/* Right Column: Workspace */}
       <div className="flex-1 flex flex-col min-w-0 bg-surface">
         <header className="px-lg py-lg border-b border-outline-variant bg-surface-container-lowest">
-          <nav className="flex items-center gap-xs font-label-caps text-on-surface-variant text-[11px] mb-xs">
+          <nav className="flex items-center gap-xs font-label-caps text-on-surface-variant text-[12px] mb-xs">
             <span>Pipeline Overview</span>
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
             <span className="text-primary">Video Framing</span>
@@ -407,7 +407,7 @@ const VideoFraming = () => {
                 Extract structured image frames from railway inspection videos for downstream defect detection.
               </p>
             </div>
-            <StatusChip label="LOCAL PROCESSING ENABLED" variant="info" icon="memory" />
+            <StatusChip label="LOCAL PROCESSING ENABLED" variant="info" icon="memory" className="text-[11px] lg:text-[12px]" />
           </div>
         </header>
 
@@ -455,7 +455,7 @@ const VideoFraming = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-md lg:gap-lg">
                 {frames.map((frame) => (
                   <FrameCard
                     key={frame.id}
