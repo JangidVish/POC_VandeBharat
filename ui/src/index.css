@@ -87,13 +87,15 @@
     @apply bg-background text-on-background font-body-base antialiased;
     margin: 0;
     overflow: hidden;
-    height: 100vh;
+    height: 100dvh;
   }
 
   #root {
-    @apply w-full h-full flex flex-col;
+    @apply w-full flex flex-col;
+    height: 100dvh;
   }
 }
+
 
 @layer components {
   .font-display { font-size: 36px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }

@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from '../../components/common/Button';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../store/useToastStore';
 
 const AnalysisDetailDrawer = ({ isOpen, onClose, result }) => {
   const toast = useToast();

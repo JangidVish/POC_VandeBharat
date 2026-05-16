@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
+import RouteTransition from './components/layout/RouteTransition';
 import VideoFraming from './pages/VideoFraming';
+import TrainNumberOCR from './pages/TrainNumberOCR';
 import Detection from './pages/Detection';
 import InspectionOutput from './pages/InspectionOutput';
-import TrainNumberOCR from './pages/TrainNumberOCR';
 
 const Dashboard = () => (
   <div className="flex-1 flex flex-col items-center justify-center bg-surface gap-md">
-    <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center border border-outline-variant animate-pulse">
+    <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center border border-outline-variant">
       <span className="material-symbols-outlined text-primary text-[32px]">dashboard</span>
     </div>
     <div className="text-center">
@@ -18,86 +20,19 @@ const Dashboard = () => (
 );
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState('inspections');
-  const [workflowStep, setWorkflowStep] = useState(1);
-
-  const [extractedFrames, setExtractedFrames] = useState([]);
-  const [trainNumber, setTrainNumber]         = useState(null);
-  const [detectedResults, setDetectedResults] = useState([]);
-
-  const handleFramingComplete = (frames) => {
-    setExtractedFrames(frames);
-    setWorkflowStep(2);
-  };
-
-  const handleOcrComplete = (detectedTrainNumber) => {
-    setTrainNumber(detectedTrainNumber);
-    setWorkflowStep(3);
-  };
-
-  const handleDetectionComplete = (results) => {
-    setDetectedResults(results);
-    setExtractedFrames([]);
-    setWorkflowStep(4);
-  };
-
-  const renderModule = () => {
-    return (
-      <div className="flex-1 flex flex-col animate-in fade-in duration-500 overflow-hidden">
-        {(() => {
-          switch (activeModule) {
-            case 'dashboard':
-              return <Dashboard />;
-            case 'inspections':
-              if (workflowStep === 1) return (
-                <VideoFraming onComplete={handleFramingComplete} />
-              );
-              if (workflowStep === 2) return (
-                <TrainNumberOCR onComplete={handleOcrComplete} />
-              );
-              if (workflowStep === 3) return (
-                <Detection
-                  frames={extractedFrames}
-                  onComplete={handleDetectionComplete}
-                />
-              );
-              if (workflowStep === 4) return (
-                <InspectionOutput results={detectedResults} trainNumber={trainNumber} />
-              );
-              return <VideoFraming onComplete={handleFramingComplete} />;
-            default:
-              return <Dashboard />;
-          }
-        })()}
-      </div>
-    );
-  };
-
   return (
-    <AppShell
-      activeModule={activeModule}
-      onModuleChange={setActiveModule}
-      currentStep={workflowStep}
-    >
-      {/* POC Step Toggle */}
-      <div className="absolute top-20 right-lg z-50 flex gap-sm bg-surface-container-highest/80 backdrop-blur-md p-xs border border-outline-variant shadow-lg rounded-sm">
-        <span className="font-label-caps text-[10px] self-center px-sm text-primary">PIPELINE STAGE:</span>
-        {[1, 2, 3, 4].map(step => (
-          <button
-            key={step}
-            onClick={() => setWorkflowStep(step)}
-            className={`px-sm py-1 font-code text-[11px] border transition-all rounded-sm ${
-              workflowStep === step
-                ? 'bg-primary text-on-primary border-primary'
-                : 'bg-surface-container-lowest text-primary border-outline-variant hover:bg-surface-container-low'
-            }`}
-          >
-            S{step}
-          </button>
-        ))}
-      </div>
-
-      {renderModule()}
+    <AppShell>
+      <RouteTransition>
+        <Routes>
+          <Route path="/" element={<Navigate to="/inspect" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/inspect" element={<VideoFraming />} />
+          <Route path="/inspect/ocr" element={<TrainNumberOCR />} />
+          <Route path="/inspect/detect" element={<Detection />} />
+          <Route path="/inspect/report" element={<InspectionOutput />} />
+          <Route path="*" element={<Navigate to="/inspect" replace />} />
+        </Routes>
+      </RouteTransition>
     </AppShell>
   );
 }

@@ -3,9 +3,10 @@ import KPICard from './KPICard';
 import DetectionLogTable from './DetectionLogTable';
 import JsonViewer from './JsonViewer';
 import Button from '../../components/common/Button';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../store/useToastStore';
+import useInspectionStore from '../../store/useInspectionStore';
 import { AnimatePresence, motion } from 'framer-motion';
-
+import Badge from '../../components/ui/Badge';
 // ── Data helpers ───────────────────────────────────────────────────────────────
 
 function resultsToTableData(results, trainNumber) {
@@ -36,7 +37,7 @@ const MOCK_DATA = [
   { imageId: 'IMG_00130', bogieNo: 'B3-A', camera: 'LC_CAM_01', component: 'Wheel Flange',     defect: 'None',          bbox: '[210, 560, 200, 150]', thumbnail: null, detections: [], gps: '28.3641°N, 77.4215°E', timestamp: '2026-05-08 09:00:48' },
 ];
 
-const PLACEHOLDER = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHIreT1_XIkocw5wqa9uPm5RWvhpr5WkPazqwrHltPc-IDgSbLxG9E84qHKLEfTfkjcX9tIVVI049dsLmNLmnSnghVkVPszS4wRFtdOwlx8j1pBh9MZ9OSMakGJioqxb8znozkRPQSZKn7cVsObJjRU7f9baGasbTqMjty53VDOMrt7Yjfgr5yAop3H8qoxgERSwGDgf5Y2PvUqrOGLiyDPtlWXg8aqfSqvTifVPmdTNF_ZdI3BGNBG-m66yLXWiASVouUwHWboA';
+const PLACEHOLDER = 'https://images.unsplash.com/photo-1515165561174-2978f08a19d5?q=80&w=2070&auto=format&fit=crop';
 
 // ── Shared: bounding box overlay ───────────────────────────────────────────────
 
@@ -112,21 +113,28 @@ function DetectionPreviewModal({ row, allRows, onClose, onNavigate, onApprove, o
         onClick={e => e.stopPropagation()}
       >
         {/* Modal header */}
-        <div className="flex items-center justify-between px-lg py-md border-b border-outline-variant bg-surface-container-low flex-shrink-0">
+        <div className="flex items-center justify-between px-lg py-md border-b border-outline-variant bg-surface-container-low/50 backdrop-blur-md flex-shrink-0">
           <div className="flex items-center gap-md">
-            <span className="font-h2 text-primary">{row.imageId}</span>
-            <span className={`font-label-caps text-[10px] px-sm py-xs rounded-sm ${row.defect !== 'None' ? 'bg-error text-white' : 'bg-primary/10 text-primary'}`}>
-              {row.defect !== 'None' ? '⚠ DEFECT' : '✓ NOMINAL'}
-            </span>
+            <div className="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center border border-primary/20">
+              <span className="material-symbols-outlined text-primary text-[20px]">image</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-label-caps text-[10px] text-outline uppercase tracking-widest leading-none mb-1">Frame Identifier</span>
+              <span className="font-display text-[20px] font-bold text-primary leading-none">{row.imageId}</span>
+            </div>
+            <Badge variant={row.defect !== 'None' ? 'error' : 'success'} className="ml-md">
+              {row.defect !== 'None' ? 'CRITICAL DEFECT' : 'NOMINAL STATUS'}
+            </Badge>
           </div>
-          <div className="flex items-center gap-sm">
-            {/* Frame counter */}
-            <span className="font-code text-[11px] text-on-surface-variant">{idx + 1} / {allRows.length}</span>
-            {/* Keyboard hint */}
-            <span className="hidden md:flex items-center gap-xs font-label-caps text-[9px] text-on-surface-variant border border-outline-variant px-sm py-xs rounded-sm">
-              <span>←</span><span>→</span> navigate · <span>ESC</span> close
-            </span>
-            <button onClick={onClose} className="material-symbols-outlined text-on-surface-variant hover:text-primary text-[20px] p-xs">close</button>
+          <div className="flex items-center gap-md">
+            <div className="hidden lg:flex items-center gap-xs px-md py-1.5 border border-outline-variant rounded-sm bg-surface-container-low/30">
+               <span className="font-code text-[11px] text-primary">{idx + 1}</span>
+               <span className="text-outline text-[10px]">/</span>
+               <span className="font-code text-[11px] text-outline">{allRows.length}</span>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-error/10 hover:text-error transition-colors text-outline">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
           </div>
         </div>
 
@@ -226,20 +234,24 @@ function GalleryView({ data, onApprove, onFlag }) {
   const defectCount = (row.detections ?? []).filter(d => d.type === 'defect').length;
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant flex flex-col overflow-hidden shadow-sm">
+    <div className="bg-surface-container-lowest border border-outline-variant flex flex-col overflow-hidden shadow-xl rounded-sm">
       {/* Gallery header */}
-      <div className="px-lg py-md border-b border-outline-variant flex items-center justify-between bg-surface-container-low/30 flex-shrink-0">
+      <div className="px-lg py-md border-b border-outline-variant flex items-center justify-between bg-surface-container-low/30 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-md">
-          <span className="font-h2 text-primary">{row.imageId}</span>
-          <span className={`font-label-caps text-[10px] px-sm py-xs rounded-sm ${defectCount > 0 ? 'bg-error text-white' : 'bg-primary/10 text-primary'}`}>
-            {defectCount > 0 ? `⚠ ${defectCount} DEFECT${defectCount > 1 ? 'S' : ''}` : '✓ NOMINAL'}
-          </span>
+          <div className="flex flex-col">
+            <span className="font-label-caps text-[9px] text-outline tracking-widest uppercase">Visual Inspection Log</span>
+            <span className="font-display text-[22px] font-bold text-primary tracking-tight leading-none mt-1">{row.imageId}</span>
+          </div>
+          <Badge variant={defectCount > 0 ? 'error' : 'success'}>
+            {defectCount > 0 ? `${defectCount} ANOMALIES` : 'CLEAN STATUS'}
+          </Badge>
         </div>
         <div className="flex items-center gap-sm">
-          <span className="font-code text-[12px] text-on-surface-variant">{idx + 1} / {data.length}</span>
-          <span className="hidden md:flex items-center gap-xs font-label-caps text-[9px] text-on-surface-variant border border-outline-variant px-sm py-xs rounded-sm">
-            ← → to navigate
-          </span>
+          <div className="flex items-center gap-2 px-md py-1 border border-outline-variant bg-surface-container-low rounded-sm">
+             <span className="font-code text-[11px] text-primary">{idx + 1}</span>
+             <span className="text-outline text-[11px]">OF</span>
+             <span className="font-code text-[11px] text-outline">{data.length}</span>
+          </div>
         </div>
       </div>
 
@@ -342,8 +354,10 @@ function GalleryView({ data, onApprove, onFlag }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-const InspectionOutput = ({ results = [], trainNumber = null }) => {
+const InspectionOutput = () => {
   const toast = useToast();
+  const results = useInspectionStore((s) => s.detectionResults);
+  const trainNumber = useInspectionStore((s) => s.trainNumber);
   const [previewRow, setPreviewRow]   = useState(null);
   const [viewMode, setViewMode]       = useState('list');   // 'list' | 'gallery'
   const [showSyncPopup, setShowSyncPopup] = useState(true);
@@ -354,7 +368,7 @@ const InspectionOutput = ({ results = [], trainNumber = null }) => {
   const totalDetections = results.length > 0
     ? results.reduce((sum, r) => sum + (r.detections?.length ?? 0), 0) : 852;
   const defectFrames = results.length > 0
-    ? results.filter(r => r.defects > 0).length
+    ? results.filter(r => (r.detections ?? []).some(d => d.type === 'defect')).length
     : tableData.filter(r => r.defect !== 'None').length;
   const avgConf = results.length > 0
     ? (() => {
@@ -411,46 +425,46 @@ const InspectionOutput = ({ results = [], trainNumber = null }) => {
       <div className="flex flex-col gap-lg p-lg min-h-full">
 
         {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md flex-shrink-0">
-          <div>
-            <nav className="flex items-center gap-xs text-on-surface-variant font-label-caps text-[10px] mb-xs uppercase">
-              <span>Video Framing</span>
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-              <span>Train No. OCR</span>
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-              <span>Detection</span>
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-              <span className="text-primary">Output Review</span>
-            </nav>
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md flex-shrink-0 pt-md">
+          <div className="flex flex-col gap-sm">
+            <h1 className="font-display text-[44px] text-primary font-bold tracking-tight leading-none uppercase">
+              Inspection <span className="text-outline/40">Review</span>
+            </h1>
             <div className="flex items-center gap-md">
-              <h1 className="font-display text-display text-primary">Structured Inspection Output</h1>
-              <span className="bg-primary text-white font-label-caps text-[10px] px-md py-1 rounded-sm flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                INSPECTION COMPLETE
-              </span>
+               <Badge variant="success" className="px-md py-1 font-bold">READY FOR SIGN-OFF</Badge>
+               <p className="font-body-base text-outline text-[13px] border-l border-outline-variant pl-md">
+                 {results.length > 0
+                   ? `Session active with ${results.length} analyzed frames.`
+                   : 'Operational review of AI-generated railway metrics.'}
+               </p>
             </div>
-            <p className="font-body-base text-on-surface-variant mt-xs">
-              {results.length > 0
-                ? `${results.length} frames from live detection session.`
-                : 'Review AI-generated railway inspection results.'}
-            </p>
           </div>
-          <div className="flex gap-sm flex-wrap">
-            <Button variant="outline" size="sm" icon="file_download" onClick={handleDownloadJson}>DOWNLOAD JSON</Button>
-            <Button variant="outline" size="sm" icon="ios_share" onClick={handleExport}>EXPORT CSV</Button>
-            <Button variant="primary" size="sm" icon="assignment" onClick={handleDownloadJson}>GENERATE REPORT</Button>
+          <div className="flex gap-sm flex-wrap bg-surface-container-low p-1.5 rounded-sm border border-outline-variant/30">
+            <Button variant="outline" size="sm" icon="file_download" onClick={handleDownloadJson}>JSON</Button>
+            <Button variant="outline" size="sm" icon="ios_share" onClick={handleExport}>CSV</Button>
+            <Button variant="primary" size="sm" icon="assignment_turned_in" onClick={handleDownloadJson}>FINALIZE</Button>
           </div>
         </header>
 
         {/* Bogie number banner */}
         {trainNumber && (
-          <div className="flex items-center gap-md bg-primary/5 border border-primary/20 rounded-sm px-lg py-sm flex-shrink-0">
-            <span className="material-symbols-outlined text-primary text-[20px]">tag</span>
-            <div>
-              <p className="font-label-caps text-[10px] text-on-surface-variant">DETECTED BOGIE NO.</p>
-              <p className="font-display text-[28px] text-primary font-bold tracking-widest leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>{trainNumber}</p>
+          <div className="flex items-center gap-md bg-surface-container-low border border-primary/20 rounded-sm px-lg py-md flex-shrink-0 relative overflow-hidden shadow-inner">
+            <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+            <span className="material-symbols-outlined text-primary text-[28px] opacity-40">digital_out_of_home</span>
+            <div className="flex flex-col">
+              <p className="font-label-caps text-[9px] text-outline tracking-[0.3em] uppercase mb-1">Target Identification Code</p>
+              <p className="font-display text-[36px] text-primary font-black tracking-widest leading-none tabular-nums drop-shadow-sm">{trainNumber}</p>
             </div>
-            <span className="ml-auto font-label-caps text-[10px] text-primary bg-primary/10 border border-primary/30 px-sm py-[2px] rounded-sm">OCR CONFIRMED</span>
+            <div className="ml-auto flex items-center gap-lg">
+               <div className="flex flex-col items-end">
+                  <span className="font-label-caps text-[9px] text-outline uppercase tracking-widest">Verification</span>
+                  <span className="text-success font-bold text-[11px] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">verified</span> 100% MATCH
+                  </span>
+               </div>
+               <div className="w-px h-8 bg-outline-variant/30" />
+               <Badge variant="primary" className="px-lg py-1">CERTIFIED</Badge>
+            </div>
           </div>
         )}
 
@@ -465,24 +479,33 @@ const InspectionOutput = ({ results = [], trainNumber = null }) => {
         {/* View toggle + workspace */}
         <section className="flex flex-col gap-md flex-shrink-0">
           {/* Toggle bar */}
-          <div className="flex items-center gap-sm">
-            <span className="font-label-caps text-[10px] text-on-surface-variant">VIEW MODE:</span>
-            {[
-              { key: 'list',    icon: 'table_rows',    label: 'LIST' },
-              { key: 'gallery', icon: 'view_carousel', label: 'GALLERY' },
-            ].map(({ key, icon, label }) => (
-              <button
-                key={key}
-                onClick={() => setViewMode(key)}
-                className={`flex items-center gap-xs px-sm py-xs font-label-caps text-[10px] border rounded-sm transition-all
-                  ${viewMode === key
-                    ? 'bg-primary text-white border-primary'
-                    : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
-              >
-                <span className="material-symbols-outlined text-[14px]">{icon}</span>
-                {label}
-              </button>
-            ))}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-sm">
+              <span className="font-label-caps text-[10px] text-outline tracking-widest">OUTPUT PERSPECTIVE:</span>
+              <div className="flex bg-surface-container-low p-1 rounded-sm border border-outline-variant/30">
+                {[
+                  { key: 'list',    icon: 'table_rows',    label: 'TELEMETRY LIST' },
+                  { key: 'gallery', icon: 'view_carousel', label: 'VISUAL GALLERY' },
+                ].map(({ key, icon, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setViewMode(key)}
+                    className={`flex items-center gap-xs px-md py-1.5 font-label-caps text-[9px] transition-all rounded-sm
+                      ${viewMode === key
+                        ? 'bg-surface shadow-sm text-primary font-bold border border-outline-variant/30'
+                        : 'text-outline hover:text-primary'}`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="hidden lg:flex items-center gap-4 text-[11px] font-code text-outline">
+               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-success" /> NOMINAL</span>
+               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-error" /> CRITICAL</span>
+            </div>
           </div>
 
           {viewMode === 'list' ? (

@@ -1,7 +1,6 @@
-paddleocr
-paddlepaddle-gpu
+easyocr
 ultralytics
 opencv-python
-numpy
+numpy<2.0.0
 flask
 flask-cors

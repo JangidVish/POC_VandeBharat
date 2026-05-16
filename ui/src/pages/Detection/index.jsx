@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import ProgressBar from '../../components/common/ProgressBar';
@@ -6,7 +7,8 @@ import StatusChip from '../../components/common/StatusChip';
 import ResultCard from './ResultCard';
 import AnalysisDetailDrawer from './AnalysisDetailDrawer';
 import { useDetectionStream } from '../../hooks/useDetectionStream';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../store/useToastStore';
+import useInspectionStore from '../../store/useInspectionStore';
 
 const YOLO_API = 'http://127.0.0.1:5002/api/yolo/predict';
 
@@ -127,8 +129,11 @@ function injectExtraFrames(accumulated) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const Detection = ({ frames = [], onComplete }) => {
+const Detection = () => {
+  const navigate = useNavigate();
   const toast    = useToast();
+  const frames = useInspectionStore((s) => s.extractedFrames);
+  const completeDetection = useInspectionStore((s) => s.completeDetection);
   const hasFrames = frames.length > 0;
 
   const [running, setRunning]           = useState(false);
@@ -139,6 +144,10 @@ const Detection = ({ frames = [], onComplete }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [confidence, setConfidence]     = useState(0.35);
   const abortRef = useRef(null);
+  
+  useEffect(() => {
+    console.log('[Detection] Mounted. running:', running, 'hasFrames:', hasFrames);
+  }, []);
 
   // WebSocket — only active in live stream mode (no frames)
   const { detections: wsDet, meta: wsMeta, isConnected, connState, disconnect: wsDisconnect }
@@ -201,7 +210,8 @@ const Detection = ({ frames = [], onComplete }) => {
       setStatusText(`Complete — ${withExtra.length} frames, ${defects} defect(s) found`);
       setRunning(false);
       toast({ type: 'success', message: `Scan complete — ${withExtra.length} frames, ${defects} defect(s) found.` });
-      onComplete?.(withExtra);
+      completeDetection(withExtra);
+      navigate('/inspect/report');
     }
   }
 
@@ -264,7 +274,8 @@ const Detection = ({ frames = [], onComplete }) => {
     setResults(withExtra);
     const defects = withExtra.filter(r => r.defects > 0).length;
     toast({ type: 'success', message: `Inspection complete — ${withExtra.length} frames, ${defects} defect(s) found.` });
-    onComplete?.(withExtra);
+    completeDetection(withExtra);
+    navigate('/inspect/report');
   };
 
   // ── Derived stats ───────────────────────────────────────────────────────────

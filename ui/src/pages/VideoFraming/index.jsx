@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -6,7 +7,8 @@ import ProgressBar from '../../components/common/ProgressBar';
 import StatusChip from '../../components/common/StatusChip';
 import FrameCard from './FrameCard';
 import FrameDetailDrawer from './FrameDetailDrawer';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../store/useToastStore';
+import useInspectionStore from '../../store/useInspectionStore';
 
 // Simulate a Vande Bharat route: New Delhi → Agra (≈200 km, ~1h 20m)
 function simulateGps(frameTimeSec) {
@@ -110,8 +112,15 @@ function formatDuration(seconds) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-const VideoFraming = ({ onComplete }) => {
+const VideoFraming = () => {
+  const navigate = useNavigate();
   const toast = useToast();
+  const { 
+    completeFraming, 
+    currentSessionId, 
+    createSession,
+    setVideoFile: setGlobalVideoFile 
+  } = useInspectionStore();
   const fileInputRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -161,12 +170,20 @@ const VideoFraming = ({ onComplete }) => {
     // Revoke previous URL to avoid memory leaks
     setVideoUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
     setVideoFile(file);
+    
+    // Multi-Session: Create or update session
+    if (!currentSessionId) {
+      createSession(file.name, file);
+    } else {
+      setGlobalVideoFile(file);
+    }
+
     setFrames([]);
     setProgress(0);
     setShowVideoPreview(true);
     loadVideoMeta(file);
     toast({ type: 'info', message: `Video loaded: ${file.name}` });
-  }, [toast]);
+  }, [toast, currentSessionId, createSession, setGlobalVideoFile]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -229,8 +246,9 @@ const VideoFraming = ({ onComplete }) => {
       toast({ type: 'warning', message: 'No frames to proceed with. Extract frames first.' });
       return;
     }
-    toast({ type: 'success', message: `${frames.length} frames sent to Detection module.` });
-    onComplete?.(frames);
+    completeFraming(frames);
+    toast({ type: 'success', message: `${frames.length} frames sent — proceeding to OCR.` });
+    navigate('/inspect/ocr');
   };
 
   const handleFrameClick = (frame) => {
@@ -368,7 +386,7 @@ const VideoFraming = ({ onComplete }) => {
           {/* Proceed Button */}
           {frames.length > 0 && !isExtracting && (
             <Button variant="primary" icon="arrow_forward" className="w-full" onClick={handleProceed}>
-              PROCEED TO DETECTION ({frames.length} frames)
+              PROCEED TO OCR ({frames.length} frames)
             </Button>
           )}
         </div>

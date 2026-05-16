@@ -25,7 +25,7 @@ from video_processor import VideoProcessor
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 VIDEO_SOURCE = os.environ.get("VIDEO_SOURCE", "../ui/public/Video_2.mp4")
-TARGET_FPS   = int(os.environ.get("TARGET_FPS", "25"))
+TARGET_FPS   = int(os.environ.get("TARGET_FPS", "5"))
 # Default to FALSE to ensure we connect to actual model as requested
 USE_STUB     = os.environ.get("USE_STUB", "false").lower() == "true"
 # ─────────────────────────────────────────────────────────────────────────────

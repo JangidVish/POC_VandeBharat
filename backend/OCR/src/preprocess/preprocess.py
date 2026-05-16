@@ -1,13 +1,10 @@
 import cv2
 import numpy as np
 
-
 def preprocess_frame(frame):
-    # Grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # CLAHE
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(gray)
-
-    return enhanced
+    """
+    Standardizes the frame for OCR. 
+    By default, we preserve color as custom models are sensitive to it.
+    """
+    # Return as-is for now to ensure training features are preserved
+    return frame

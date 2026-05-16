@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Badge from '../../components/ui/Badge';
 
 const DetectionLogTable = ({ data, onViewRow }) => {
   const [query, setQuery] = useState('');
@@ -17,7 +18,7 @@ const DetectionLogTable = ({ data, onViewRow }) => {
       );
     }
     if (filterDefects) {
-      rows = rows.filter(r => r.defect !== 'None');
+      rows = rows.filter(r => r.defect !== 'None' && r.defect !== 'nominal');
     }
     if (sortField) {
       rows = [...rows].sort((a, b) => {
@@ -40,60 +41,64 @@ const DetectionLogTable = ({ data, onViewRow }) => {
   };
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant flex flex-col overflow-hidden shadow-sm h-full">
-      <div className="p-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low/30 flex-wrap gap-sm">
-        <div className="flex items-center gap-md">
-          <h2 className="font-h2 text-h2 text-primary">DETECTION LOG</h2>
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+    <div className="bg-surface-container-lowest border border-outline-variant flex flex-col overflow-hidden shadow-xl rounded-sm h-full">
+      <div className="p-lg border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50 backdrop-blur-sm flex-wrap gap-md">
+        <div className="flex items-center gap-xl">
+          <div className="flex flex-col">
+            <h2 className="font-display text-[18px] font-black text-primary tracking-tight tracking-tight">DETECTION TELEMETRY</h2>
+            <span className="font-label-caps text-[9px] text-outline tracking-widest mt-0.5 uppercase">Live Data Stream Analysis</span>
+          </div>
+          <div className="relative group">
+            <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline group-hover:text-primary transition-colors text-[18px]">search</span>
             <input
-              className="pl-xl pr-md py-xs bg-surface-container-lowest border border-outline-variant font-body-sm focus:outline-none focus:border-primary w-64 text-body-sm"
-              placeholder="Search ID, Bogie, Component…"
+              className="pl-[42px] pr-md py-2 bg-surface-container-low border border-outline-variant/50 font-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 w-72 text-[12px] rounded-sm transition-all shadow-inner"
+              placeholder="Search Component, Bogie ID or Defects..."
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
           </div>
         </div>
-        <div className="flex gap-xs items-center">
+        <div className="flex gap-sm items-center">
           <button
             onClick={() => setFilterDefects(p => !p)}
-            className={`px-sm py-xs font-label-caps text-[10px] border rounded-sm transition-colors ${
+            className={`px-md py-1.5 font-label-caps text-[10px] border rounded-sm transition-all flex items-center gap-2 ${
               filterDefects
-                ? 'bg-error text-white border-error'
-                : 'hover:bg-surface-container-high border-outline-variant'
+                ? 'bg-error text-white border-error shadow-lg shadow-error/20'
+                : 'bg-surface hover:bg-surface-container-high border-outline-variant text-on-surface-variant'
             }`}
-            title="Show defects only"
           >
-            {filterDefects ? 'DEFECTS ONLY ✓' : 'ALL ROWS'}
+            <span className="material-symbols-outlined text-[14px]">{filterDefects ? 'warning' : 'list'}</span>
+            {filterDefects ? 'CRITICAL ONLY' : 'ALL ENTRIES'}
           </button>
-          <button onClick={() => { setQuery(''); setFilterDefects(false); setSortField(null); }} className="p-xs hover:bg-surface-container-high transition-colors" title="Clear filters">
-            <span className="material-symbols-outlined text-[20px]">filter_list_off</span>
+          <div className="w-px h-6 bg-outline-variant/30" />
+          <button onClick={() => { setQuery(''); setFilterDefects(false); setSortField(null); }} className="w-8 h-8 flex items-center justify-center hover:bg-error/10 hover:text-error transition-colors rounded-full text-outline" title="Clear Filters">
+            <span className="material-symbols-outlined text-[20px]">filter_alt_off</span>
           </button>
         </div>
       </div>
 
       <div className="overflow-auto flex-grow custom-scrollbar">
         <table className="w-full text-left border-collapse">
-          <thead className="sticky top-0 bg-surface-container-low z-10">
-            <tr className="font-label-caps text-[10px] text-on-surface-variant border-b border-outline-variant">
+          <thead className="sticky top-0 bg-surface-container-low z-10 shadow-sm">
+            <tr className="font-label-caps text-[10px] text-outline border-b border-outline-variant">
               {[
-                { key: 'timestamp', label: 'DATE & TIME' },
-                { key: 'gps',       label: 'GPS LOCATION' },
-                { key: 'bogieNo',   label: 'BOGIE NO' },
+                { key: null,        label: 'PREVIEW', width: 'w-20' },
+                { key: 'timestamp', label: 'OPERATIONAL CONTEXT' },
+                { key: 'bogieNo',   label: 'BOGIE ID' },
                 { key: 'component', label: 'COMPONENT' },
-                { key: 'defect',    label: 'DEFECT' },
-                { key: null,        label: '' },
+                { key: 'defect',    label: 'STATUS / DEFECT' },
+                { key: null,        label: 'ACTIONS', width: 'w-24' },
               ].map(col => (
                 <th
                   key={col.label}
-                  className={`px-md py-sm font-bold select-none ${col.key ? 'cursor-pointer hover:text-primary' : ''}`}
+                  className={`px-lg py-3 font-bold select-none ${col.width || ''} ${col.key ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
                   onClick={col.key ? () => handleSort(col.key) : undefined}
                 >
-                  <span className="inline-flex items-center gap-xs">
+                  <div className="flex items-center gap-xs">
                     {col.label}
                     {col.key && <SortIcon field={col.key} />}
-                  </span>
+                  </div>
                 </th>
               ))}
             </tr>
@@ -101,59 +106,84 @@ const DetectionLogTable = ({ data, onViewRow }) => {
           <tbody className="font-body-sm text-on-surface text-[12px]">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-md py-lg text-center text-on-surface-variant font-body-sm">
-                  No results match your filter.
+                <td colSpan={6} className="px-lg py-xl text-center text-outline font-body-sm italic bg-surface/30">
+                  No telemetry entries match the current configuration.
                 </td>
               </tr>
             ) : (
-              filtered.map((row, idx) => (
-                <tr
-                  key={idx}
-                  className={`border-b transition-colors ${
-                    row.defect !== 'None'
-                      ? 'bg-red-50 border-red-200 hover:bg-red-100'
-                      : 'border-outline-variant hover:bg-surface-container-low'
-                  }`}
-                >
-                  <td className="px-md py-sm font-code text-on-surface-variant whitespace-nowrap">{row.timestamp ?? '—'}</td>
-                  <td className="px-md py-sm">
-                    <div className="flex items-center gap-xs">
-                      <span className="material-symbols-outlined text-[13px] text-blue-500" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
-                      <span className="font-code text-[11px] text-on-surface-variant whitespace-nowrap">{row.gps ?? '—'}</span>
-                    </div>
-                  </td>
-                  <td className="px-md py-sm">{row.bogieNo}</td>
-                  <td className="px-md py-sm font-medium max-w-[160px]">
-                    <span className="block truncate" title={row.component}>{row.component}</span>
-                    {row.detections?.length > 0 && (
-                      <span className="text-[10px] text-on-surface-variant">{row.detections.length} label{row.detections.length !== 1 ? 's' : ''}</span>
-                    )}
-                  </td>
-                  <td className="px-md py-sm max-w-[140px]">
-                    <span className={`block truncate ${row.defect !== 'None' ? 'text-error font-medium' : 'text-on-surface-variant'}`} title={row.defect}>
-                      {row.defect}
-                    </span>
-                  </td>
-                  <td className="px-md py-sm">
-                    <button
-                      onClick={() => onViewRow(row)}
-                      className="inline-flex items-center gap-xs font-label-caps text-[10px] px-sm py-xs border border-outline-variant hover:bg-primary hover:text-white hover:border-primary transition-colors rounded-sm"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                      VIEW
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filtered.map((row, idx) => {
+                const isDefect = row.defect && row.defect.toLowerCase() !== 'none' && row.defect.toLowerCase() !== 'nominal';
+                return (
+                  <tr
+                    key={idx}
+                    className={`group border-b transition-all duration-200 ${
+                      isDefect
+                        ? 'bg-error/5 hover:bg-error/10 border-error/20'
+                        : 'border-outline-variant hover:bg-surface-container-low'
+                    }`}
+                  >
+                    <td className="px-lg py-sm">
+                      <div className="w-14 h-9 rounded-sm bg-black overflow-hidden border border-outline-variant group-hover:border-primary transition-colors relative shadow-inner">
+                        {row.thumbnail ? (
+                          <img src={row.thumbnail} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="thumb" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center opacity-20">
+                            <span className="material-symbols-outlined text-[18px]">image</span>
+                          </div>
+                        )}
+                        {isDefect && <div className="absolute top-0 right-0 w-2 h-2 bg-error rounded-bl-sm animate-pulse" />}
+                      </div>
+                    </td>
+                    <td className="px-lg py-sm">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-code text-[11px] font-bold text-on-surface">{row.timestamp ?? '—'}</span>
+                        <div className="flex items-center gap-1 text-outline">
+                          <span className="material-symbols-outlined text-[12px] opacity-60" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                          <span className="font-code text-[10px] tracking-tight">{row.gps ?? '—'}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-lg py-sm">
+                      <span className="font-display font-bold text-[13px] text-primary">{row.bogieNo}</span>
+                    </td>
+                    <td className="px-lg py-sm">
+                      <div className="flex flex-col gap-0.5 max-w-[200px]">
+                        <span className="font-body-sm font-medium text-on-surface truncate" title={row.component}>{row.component}</span>
+                        {row.detections?.length > 0 && (
+                          <span className="font-label-caps text-[9px] text-outline uppercase tracking-wider">{row.detections.length} DETECTION CHANNELS</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-lg py-sm">
+                      {isDefect ? (
+                        <Badge variant="error" className="py-1 uppercase font-bold tracking-widest text-[9px]">CRITICAL: {row.defect}</Badge>
+                      ) : (
+                        <Badge variant="success" className="py-1 uppercase font-bold tracking-widest text-[9px]">NOMINAL</Badge>
+                      )}
+                    </td>
+                    <td className="px-lg py-sm text-right">
+                      <button
+                        onClick={() => onViewRow(row)}
+                        className="inline-flex items-center gap-2 font-label-caps text-[10px] px-md py-1.5 border border-outline-variant bg-surface group-hover:border-primary group-hover:text-primary transition-all rounded-sm font-bold shadow-sm"
+                      >
+                        VIEW
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="px-md py-xs border-t border-outline-variant bg-surface-container-low/20 font-label-caps text-[10px] text-on-surface-variant">
-        {filtered.length} / {data.length} rows
-        {filterDefects && ` · defects only`}
-        {query && ` · filtered by "${query}"`}
+      <div className="px-lg py-2 border-t border-outline-variant bg-surface-container-low/50 font-label-caps text-[10px] text-outline flex items-center justify-between">
+        <div className="flex items-center gap-md">
+          <span>{filtered.length} / {data.length} ENTRIES</span>
+          {filterDefects && <span className="text-error font-bold tracking-widest">• CRITICAL MODE ACTIVE</span>}
+        </div>
+        {query && <span className="italic tracking-wider">FILTERED BY: "{query}"</span>}
       </div>
     </div>
   );

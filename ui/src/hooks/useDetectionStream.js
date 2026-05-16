@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
 
+const WS_URL = 'ws://127.0.0.1:8000/ws/detections'
+
 const CONNECTION_STATE = {
   CONNECTING: 'connecting',
   CONNECTED:  'connected',
@@ -16,17 +18,29 @@ export function useDetectionStream(enabled = true) {
   const wsRef       = useRef(null)
   const retryRef    = useRef(null)
   const retryCount  = useRef(0)
+  const enabledRef  = useRef(enabled)
+  const connId      = useRef(0)
   const MAX_RETRIES = 5
 
+  useEffect(() => {
+    enabledRef.current = enabled
+  }, [enabled])
+
   const connect = useCallback(() => {
+    const id = ++connId.current
+    if (!enabledRef.current) {
+      console.log(`[WS-${id}] Connection blocked: Hook is disabled`);
+      return
+    }
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
     setConnState(CONNECTION_STATE.CONNECTING)
+    console.log(`[WS-${id}] Connecting to ${WS_URL}...`);
     const ws = new WebSocket(WS_URL)
     wsRef.current = ws
 
     ws.onopen = () => {
-      console.log('[WS] Connected to backend')
+      console.log(`[WS-${id}] Connected to backend`)
       setConnState(CONNECTION_STATE.CONNECTED)
       retryCount.current = 0
     }
@@ -74,13 +88,23 @@ export function useDetectionStream(enabled = true) {
   }, [])
 
   useEffect(() => {
-    if (!enabled) return
-    connect()
-    return () => {
-      clearTimeout(retryRef.current)
-      wsRef.current?.close()
+    console.log(`[useDetectionStream] Enabled check: ${enabled}`);
+    if (!enabled) {
+      if (wsRef.current) {
+        console.log('[useDetectionStream] Disabling: Closing existing connection');
+        disconnect();
+      }
+      return;
     }
-  }, [enabled, connect])
+    connect();
+    return () => {
+      clearTimeout(retryRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [enabled, connect, disconnect]);
 
   return {
     detections,
