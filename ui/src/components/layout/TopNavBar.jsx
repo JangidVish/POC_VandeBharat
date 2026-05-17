@@ -9,7 +9,7 @@ const navItems = [
   { id: 'inspections', label: 'Inspections', path: '/inspect' },
   { id: 'analytics', label: 'Analytics', path: '#' },
   { id: 'maintenance', label: 'Maintenance', path: '#' },
-  { id: 'system', label: 'System', path: '#' },
+  { id: 'developer', label: 'Developer', path: '/developer' },
 ];
 
 const TopNavBar = () => {
@@ -22,7 +22,7 @@ const TopNavBar = () => {
     return location.pathname === item.path;
   };
 
-  const { sessions, currentSessionId, switchSession, createSession } = useInspectionStore();
+  const { sessions, currentSessionId, switchSession, createSession, deleteSession, renameSession } = useInspectionStore();
   const [sessionOpen, setSessionOpen] = useState(false);
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -42,7 +42,7 @@ const TopNavBar = () => {
 
   return (
     <header className="bg-surface-container-lowest border-b border-outline-variant z-50 flex-shrink-0">
-      <div className="flex justify-between items-center w-full px-lg py-md lg:py-lg max-w-full mx-auto">
+      <div className="flex justify-between items-center w-full px-sm py-xs lg:py-xs max-w-full mx-auto">
         {/* Left: Logo + Session Picker */}
         <div className="flex items-center gap-xl">
           <div className="flex items-center gap-md">
@@ -71,7 +71,7 @@ const TopNavBar = () => {
               {sessionOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setSessionOpen(false)} />
-                  <div className="absolute top-full left-0 mt-1 w-[280px] bg-surface-container-lowest border border-outline-variant shadow-xl z-50 rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
+                  <div className="absolute top-full left-0 mt-1 w-[320px] bg-surface-container-lowest border border-outline-variant shadow-xl z-50 rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
                     <div className="p-2 bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
                       <span className="font-label-caps text-[9px] text-outline">SELECT INSPECTION</span>
                       <button onClick={handleNewInspection} className="text-primary hover:bg-primary/10 p-1 rounded-full transition-colors">
@@ -83,15 +83,44 @@ const TopNavBar = () => {
                         <div className="px-4 py-6 text-center text-outline text-[11px] italic">No active sessions</div>
                       ) : (
                         sessions.map(s => (
-                          <button
+                          <div
                             key={s.id}
-                            onClick={() => { switchSession(s.id); setSessionOpen(false); }}
-                            className={`w-full text-left px-4 py-2 hover:bg-surface-container-low flex flex-col gap-0.5 transition-colors
+                            className={`group/item w-full flex items-center justify-between px-4 py-2 hover:bg-surface-container-low/50 transition-colors
                               ${currentSessionId === s.id ? 'bg-primary/5 border-l-2 border-primary' : ''}`}
                           >
-                            <span className={`text-[12px] font-bold ${currentSessionId === s.id ? 'text-primary' : 'text-on-surface'}`}>{s.name}</span>
-                            <span className="text-[9px] text-outline font-code">{s.timestamp}</span>
-                          </button>
+                            <button
+                              onClick={() => { switchSession(s.id); setSessionOpen(false); }}
+                              className="flex-1 text-left flex flex-col gap-0.5 min-w-0"
+                            >
+                              <span className={`text-[12px] font-bold truncate ${currentSessionId === s.id ? 'text-primary' : 'text-on-surface'}`}>{s.name}</span>
+                              <span className="text-[9px] text-outline font-code">{s.timestamp ? new Date(s.timestamp).toLocaleString() : '—'}</span>
+                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 focus-within:opacity-100 transition-opacity ml-2 flex-shrink-0">
+                              <button
+                                title="Rename Session"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const newName = prompt("Rename session:", s.name);
+                                  if (newName) renameSession(s.id, newName);
+                                }}
+                                className="text-outline hover:text-primary p-1 rounded hover:bg-surface-container-high transition-colors flex items-center justify-center"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                              </button>
+                              <button
+                                title="Delete Session"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Are you sure you want to delete "${s.name}"?`)) {
+                                    deleteSession(s.id);
+                                  }
+                                }}
+                                className="text-outline hover:text-error p-1 rounded hover:bg-error/10 transition-colors flex items-center justify-center"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            </div>
+                          </div>
                         ))
                       )}
                     </div>

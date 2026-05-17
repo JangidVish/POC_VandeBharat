@@ -214,8 +214,15 @@ const VideoFraming = () => {
         controller.signal,
       );
       setFrames(extracted);
-      setProgress(100);
-      toast({ type: 'success', message: `Extracted ${extracted.length} frames successfully.` });
+
+      if (!controller.signal.aborted) {
+        setProgress(100);
+        toast({ type: 'success', message: `Extracted ${extracted.length} frames successfully. Proceeding to OCR...` });
+        completeFraming(extracted);
+        setTimeout(() => {
+          navigate('/inspect/ocr');
+        }, 1000);
+      }
     } catch (err) {
       if (!controller.signal.aborted) {
         toast({ type: 'error', message: `Extraction failed: ${err.message}` });

@@ -6,6 +6,7 @@ import VideoFraming from './pages/VideoFraming';
 import TrainNumberOCR from './pages/TrainNumberOCR';
 import Detection from './pages/Detection';
 import InspectionOutput from './pages/InspectionOutput';
+import DeveloperMode from './pages/DeveloperMode';
 
 const Dashboard = () => (
   <div className="flex-1 flex flex-col items-center justify-center bg-surface gap-md">
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/inspect/ocr" element={<TrainNumberOCR />} />
           <Route path="/inspect/detect" element={<Detection />} />
           <Route path="/inspect/report" element={<InspectionOutput />} />
+          <Route path="/developer" element={<DeveloperMode />} />
           <Route path="*" element={<Navigate to="/inspect" replace />} />
         </Routes>
       </RouteTransition>

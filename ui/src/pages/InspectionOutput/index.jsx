@@ -7,6 +7,7 @@ import { useToast } from '../../store/useToastStore';
 import useInspectionStore from '../../store/useInspectionStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import Badge from '../../components/ui/Badge';
+import useDeveloperStore from '../../store/useDeveloperStore';
 // ── Data helpers ───────────────────────────────────────────────────────────────
 
 function resultsToTableData(results, trainNumber) {
@@ -31,10 +32,10 @@ function resultsToTableData(results, trainNumber) {
 }
 
 const MOCK_DATA = [
-  { imageId: 'IMG_00124', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Brake Pad',        defect: 'Surface Crack', bbox: '[124, 452, 45, 12]',   thumbnail: null, detections: [], gps: '28.6321°N, 77.2341°E', timestamp: '2026-05-08 09:00:12' },
-  { imageId: 'IMG_00125', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Secondary Spring', defect: 'None',          bbox: '[890, 112, 120, 120]', thumbnail: null, detections: [], gps: '28.5910°N, 77.2589°E', timestamp: '2026-05-08 09:00:24' },
-  { imageId: 'IMG_00128', bogieNo: 'B2-B', camera: 'RC_CAM_02', component: 'Axle Box',         defect: 'Oil Seepage',   bbox: '[445, 320, 80, 80]',  thumbnail: null, detections: [], gps: '28.4773°N, 77.3102°E', timestamp: '2026-05-08 09:00:36' },
-  { imageId: 'IMG_00130', bogieNo: 'B3-A', camera: 'LC_CAM_01', component: 'Wheel Flange',     defect: 'None',          bbox: '[210, 560, 200, 150]', thumbnail: null, detections: [], gps: '28.3641°N, 77.4215°E', timestamp: '2026-05-08 09:00:48' },
+  // { imageId: 'IMG_00124', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Brake Pad',        defect: 'Surface Crack', bbox: '[124, 452, 45, 12]',   thumbnail: null, detections: [], gps: '28.6321°N, 77.2341°E', timestamp: '2026-05-08 09:00:12' },
+  // { imageId: 'IMG_00125', bogieNo: 'B2-A', camera: 'LC_CAM_01', component: 'Secondary Spring', defect: 'None',          bbox: '[890, 112, 120, 120]', thumbnail: null, detections: [], gps: '28.5910°N, 77.2589°E', timestamp: '2026-05-08 09:00:24' },
+  // { imageId: 'IMG_00128', bogieNo: 'B2-B', camera: 'RC_CAM_02', component: 'Axle Box',         defect: 'Oil Seepage',   bbox: '[445, 320, 80, 80]',  thumbnail: null, detections: [], gps: '28.4773°N, 77.3102°E', timestamp: '2026-05-08 09:00:36' },
+  // { imageId: 'IMG_00130', bogieNo: 'B3-A', camera: 'LC_CAM_01', component: 'Wheel Flange',     defect: 'None',          bbox: '[210, 560, 200, 150]', thumbnail: null, detections: [], gps: '28.3641°N, 77.4215°E', timestamp: '2026-05-08 09:00:48' },
 ];
 
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1515165561174-2978f08a19d5?q=80&w=2070&auto=format&fit=crop';
@@ -79,7 +80,7 @@ function DetectionList({ detections }) {
 
 // ── Detection Preview Modal (enlarged, keyboard-navigable) ─────────────────────
 
-function DetectionPreviewModal({ row, allRows, onClose, onNavigate, onApprove, onFlag }) {
+function DetectionPreviewModal({ row, allRows, onClose, onNavigate, onApprove, onFlag, developerMode, onMarkFalse }) {
   const idx     = allRows.indexOf(row);
   const hasPrev = idx > 0;
   const hasNext = idx < allRows.length - 1;
@@ -200,9 +201,16 @@ function DetectionPreviewModal({ row, allRows, onClose, onNavigate, onApprove, o
             </div>
 
             {/* Actions */}
-            <div className="flex gap-sm p-lg border-t border-outline-variant flex-shrink-0">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => { onFlag(row); onClose(); }}>FLAG</Button>
-              <Button variant="primary" size="sm" className="flex-1" onClick={() => { onApprove(row); onClose(); }}>APPROVE</Button>
+            <div className="flex flex-col gap-sm p-lg border-t border-outline-variant flex-shrink-0">
+              <div className="flex gap-sm">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => { onFlag(row); onClose(); }}>FLAG</Button>
+                <Button variant="primary" size="sm" className="flex-1" onClick={() => { onApprove(row); onClose(); }}>APPROVE</Button>
+              </div>
+              {developerMode && (
+                <Button variant="outline" size="sm" className="w-full text-error border-error/50 hover:bg-error/10 hover:border-error" onClick={() => { onMarkFalse(row); onClose(); }}>
+                  MARK PREDICTION AS FALSE
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -213,7 +221,7 @@ function DetectionPreviewModal({ row, allRows, onClose, onNavigate, onApprove, o
 
 // ── Gallery view ───────────────────────────────────────────────────────────────
 
-function GalleryView({ data, onApprove, onFlag }) {
+function GalleryView({ data, onApprove, onFlag, developerMode, onMarkFalse }) {
   const [idx, setIdx] = useState(0);
   const row = data[idx];
 
@@ -258,14 +266,18 @@ function GalleryView({ data, onApprove, onFlag }) {
       {/* Main area */}
       <div className="flex flex-col lg:flex-row flex-1 min-h-0" style={{ minHeight: 520 }}>
         {/* Image with bboxes */}
-        <div className="flex-1 bg-black relative overflow-hidden min-h-[320px]">
-          <img
-            key={row.imageId}
-            className="absolute inset-0 w-full h-full object-cover"
-            src={row.thumbnail || PLACEHOLDER}
-            alt={row.imageId}
-          />
-          <BBoxOverlay detections={row.detections} />
+        <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden min-h-[300px]">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img
+              key={row.imageId}
+              className="w-full h-full object-contain"
+              src={row.thumbnail || PLACEHOLDER}
+              alt={row.imageId}
+            />
+            <div className="absolute inset-0 max-w-full max-h-full m-auto" style={{ aspectRatio: '16/9' }}>
+               <BBoxOverlay detections={row.detections} />
+            </div>
+          </div>
 
           {/* Prev arrow */}
           <button
@@ -316,9 +328,16 @@ function GalleryView({ data, onApprove, onFlag }) {
             </div>
           </div>
 
-          <div className="flex gap-sm p-lg border-t border-outline-variant flex-shrink-0">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => onFlag(row)}>FLAG</Button>
-            <Button variant="primary" size="sm" className="flex-1" onClick={() => onApprove(row)}>APPROVE</Button>
+          <div className="flex flex-col gap-sm p-lg border-t border-outline-variant flex-shrink-0">
+            <div className="flex gap-sm">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => onFlag(row)}>FLAG</Button>
+              <Button variant="primary" size="sm" className="flex-1" onClick={() => onApprove(row)}>APPROVE</Button>
+            </div>
+            {developerMode && (
+              <Button variant="outline" size="sm" className="w-full text-error border-error/50 hover:bg-error/10 hover:border-error" onClick={() => onMarkFalse(row)}>
+                MARK PREDICTION AS FALSE
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -358,9 +377,11 @@ const InspectionOutput = () => {
   const toast = useToast();
   const results = useInspectionStore((s) => s.detectionResults);
   const trainNumber = useInspectionStore((s) => s.trainNumber);
+  const { developerMode, addFalseDetection } = useDeveloperStore();
   const [previewRow, setPreviewRow]   = useState(null);
-  const [viewMode, setViewMode]       = useState('list');   // 'list' | 'gallery'
+  const [viewMode, setViewMode]       = useState('gallery');   // 'list' | 'gallery'
   const [showSyncPopup, setShowSyncPopup] = useState(true);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const tableData = results.length > 0 ? resultsToTableData(results, trainNumber) : MOCK_DATA;
 
@@ -420,6 +441,28 @@ const InspectionOutput = () => {
   const handleApprove = (row) => toast({ type: 'success', message: `${row.imageId} approved.` });
   const handleFlag    = (row) => toast({ type: 'warning', message: `${row.imageId} flagged for review.` });
 
+  const handleMarkFalse = (row) => {
+    const reason = window.prompt("Enter false detection details (optional):", "No defect actually present");
+    if (reason !== null) {
+      const store = useInspectionStore.getState();
+      const activeSession = store.sessions.find(s => s.id === store.currentSessionId);
+      const inspectionName = activeSession?.name || "Inspection 1";
+
+      addFalseDetection({
+        frameId: row.imageId,
+        videoName: store.videoFile?.name || 'Video_2.mp4',
+        inspectionName: inspectionName,
+        timestamp: row.timestamp,
+        defectDetails: row.detections,
+        falseDetails: reason,
+        thumbnail: row.thumbnail || PLACEHOLDER,
+        gps: row.gps,
+        trainNumber: row.bogieNo
+      });
+      toast({ type: 'success', message: `${row.imageId} marked as false detection.` });
+    }
+  };
+
   return (
     <div className="flex-1 h-full overflow-y-auto custom-scrollbar bg-surface">
       <div className="flex flex-col gap-lg p-lg min-h-full">
@@ -477,7 +520,11 @@ const InspectionOutput = () => {
         </section>
 
         {/* View toggle + workspace */}
-        <section className="flex flex-col gap-md flex-shrink-0">
+        <section className={`flex flex-col gap-md ${
+          isFullScreen 
+            ? 'fixed inset-0 z-[100] bg-surface p-lg h-dvh w-dvw overflow-hidden' 
+            : 'flex-1 min-h-0'
+        }`}>
           {/* Toggle bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-sm">
@@ -500,6 +547,17 @@ const InspectionOutput = () => {
                   </button>
                 ))}
               </div>
+              
+              <button
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className={`flex items-center gap-xs px-md py-2 font-label-caps text-[10px] lg:text-[11px] transition-all rounded-sm border
+                  ${isFullScreen 
+                    ? 'bg-error border-error text-white font-bold shadow-lg shadow-error/20' 
+                    : 'bg-surface-container-low border-outline-variant/30 text-outline hover:text-primary hover:border-outline-variant'}`}
+              >
+                <span className="material-symbols-outlined text-[16px]">{isFullScreen ? 'fullscreen_exit' : 'fullscreen'}</span>
+                {isFullScreen ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}
+              </button>
             </div>
             
             <div className="hidden lg:flex items-center gap-4 text-[12px] font-code text-outline">
@@ -509,16 +567,18 @@ const InspectionOutput = () => {
           </div>
 
           {viewMode === 'list' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-lg min-w-0">
-               <div className="lg:col-span-8 min-h-[400px] flex flex-col min-w-0">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-lg min-w-0 flex-1">
+               <div className="lg:col-span-8 h-full flex flex-col min-w-0">
                 <DetectionLogTable data={tableData} onViewRow={setPreviewRow} />
               </div>
-               <div className="lg:col-span-4 min-h-[400px] flex flex-col min-w-0">
+               <div className="lg:col-span-4 h-full flex flex-col min-w-0">
                 <JsonViewer data={jsonOutput} />
               </div>
             </div>
           ) : (
-            <GalleryView data={tableData} onApprove={handleApprove} onFlag={handleFlag} />
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+               <GalleryView data={tableData} onApprove={handleApprove} onFlag={handleFlag} developerMode={developerMode} onMarkFalse={handleMarkFalse} />
+            </div>
           )}
         </section>
 
@@ -534,6 +594,8 @@ const InspectionOutput = () => {
             onNavigate={setPreviewRow}
             onApprove={handleApprove}
             onFlag={handleFlag}
+            developerMode={developerMode}
+            onMarkFalse={handleMarkFalse}
           />
         )}
       </AnimatePresence>

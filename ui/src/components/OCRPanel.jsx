@@ -5,6 +5,7 @@ import Badge from './ui/Badge';
 import Spinner from './ui/Spinner';
 import Button from './common/Button';
 import useInspectionStore from '../store/useInspectionStore';
+import { useToast } from '../store/useToastStore';
 
 const OCR_SERVER = 'http://127.0.0.1:5000';
 
@@ -32,6 +33,7 @@ function b64ToBlob(dataUrl) {
 
 export default function OCRPanel() {
   const navigate = useNavigate();
+  const toast = useToast();
   const completeOCR = useInspectionStore((s) => s.completeOCR);
   const setOcrResults = useInspectionStore((s) => s.setOcrResults);
   const extractedFrames = useInspectionStore((s) => s.extractedFrames);
@@ -125,7 +127,13 @@ export default function OCRPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Server error');
       setResult({ ...data, mode: 'image' });
-      if (data.best) completeOCR(data.best);
+      if (data.best) {
+        completeOCR(data.best);
+        toast({ type: 'success', message: `OCR complete. Detected Bogie: ${data.best}` });
+        setTimeout(() => {
+          navigate('/inspect/detect');
+        }, 1500);
+      }
     } catch (err) {
       setError(err.message.includes('Failed to fetch')
         ? 'Cannot reach OCR server on port 5000 — make sure it is running.'
@@ -195,7 +203,13 @@ export default function OCRPanel() {
           } else if (evt.type === 'done') {
             pushLog(`✓ Done — best result: ${evt.best || 'None'}`);
             setResult({ ...evt, mode: 'video' });
-            if (evt.best) completeOCR(evt.best);
+            if (evt.best) {
+              completeOCR(evt.best);
+              toast({ type: 'success', message: `Video OCR complete. Detected Bogie: ${evt.best}` });
+              setTimeout(() => {
+                navigate('/inspect/detect');
+              }, 1500);
+            }
             setLoading(false);
           } else if (evt.type === 'error') {
             throw new Error(evt.message);
@@ -274,6 +288,9 @@ export default function OCRPanel() {
         completeOCR(best);
         pushLog(`✓ Batch Complete. Primary Candidate: ${best}`);
         toast({ type: 'success', message: `Batch OCR complete. Detected Bogie: ${best}` });
+        setTimeout(() => {
+          navigate('/inspect/detect');
+        }, 1500);
       } else {
         setError("No clear text detected in any frames.");
         pushLog(`⚠ Batch finished with no results.`);

@@ -121,6 +121,10 @@ const EXTRA_FRAMES = [
 ];
 
 function injectExtraFrames(accumulated) {
+  // Prevent duplicate injection if the extra frames are already present
+  const hasExtra = accumulated.some(f => f.id && f.id.startsWith('Extra_Frame'));
+  if (hasExtra) return accumulated;
+
   const result = [...accumulated];
   const insertAt = 24; // 0-indexed → positions 25, 26, 27
   result.splice(insertAt, 0, ...EXTRA_FRAMES);
@@ -142,7 +146,7 @@ const Detection = () => {
   const [statusText, setStatusText]     = useState('Ready — click RUN DETECTION');
   const [selectedResult, setSelectedResult] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [confidence, setConfidence]     = useState(0.35);
+  const [confidence, setConfidence]     = useState(0.15);
   const abortRef = useRef(null);
   
   useEffect(() => {
@@ -425,7 +429,7 @@ const Detection = () => {
               </div>
               <div className="p-panel-padding overflow-y-auto custom-scrollbar flex-1">
                 {results.length === 0 && !running ? (
-                  <div className="flex flex-col items-center justify-center h-40 opacity-50 gap-sm">
+                  <div className="flex flex-col items-center justify-center h-full min-h-[300px] opacity-50 gap-sm">
                     <span className="material-symbols-outlined text-[40px] text-on-surface-variant">image_search</span>
                     <p className="font-body-sm text-on-surface-variant">No results yet — run detection to start.</p>
                   </div>
