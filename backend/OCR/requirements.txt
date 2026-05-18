@@ -1,5 +1,6 @@
-easyocr
-opencv-python
-numpy
-flask
-flask-cors
+paddleocr>=3.5.0
+paddlex>=3.5.0
+opencv-python>=4.9.0
+numpy>=1.26.0
+flask>=3.0.0
+flask-cors>=4.0.0

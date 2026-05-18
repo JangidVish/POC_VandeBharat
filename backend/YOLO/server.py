@@ -54,13 +54,21 @@ model = None
 def load_model():
     global model
     from ultralytics import YOLO
+    import torch
+    
+    device = os.environ.get("YOLO_DEVICE", "cuda:0" if torch.cuda.is_available() else "cpu")
     abs_path = os.path.abspath(MODEL_PATH)
+    
     print(f"  Loading model from: {abs_path}")
+    print(f"  Target device: {device}")
+    
     model = YOLO(abs_path)
+    model.to(device)
+    
     # Warmup pass
     blank = np.zeros((640, 640, 3), dtype="uint8")
     model(blank, verbose=False)
-    print("  Model warmed up.")
+    print(f"  Model warmed up on {device}.")
 
 
 # ─── App ──────────────────────────────────────────────────────────────────────
