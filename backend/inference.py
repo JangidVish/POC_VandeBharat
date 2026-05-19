@@ -37,7 +37,14 @@ class InferenceEngine:
                 timeout=YOLO_TIMEOUT_S,
             )
             resp.raise_for_status()
-            return resp.json().get("detections", [])
+            detections = resp.json().get("detections", [])
+            
+            if detections:
+                print(f"[FastAPI][YOLO_DEFECTS] Detected {len(detections)} features:")
+                for d in detections:
+                    print(f"  - Label: {d['label']}, Conf: {d['confidence']}, Bbox: {d['bbox_px']}, Defect: {d['defect']}, Severity: {d['severity']}")
+            
+            return detections
         except requests.exceptions.ConnectionError:
             print("[InferenceEngine] YOLO service unreachable — is it running on port 5002?")
             return []

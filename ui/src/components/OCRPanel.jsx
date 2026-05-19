@@ -44,6 +44,7 @@ export default function OCRPanel({ onComplete }) {
   const [result, setResult]     = useState(null)
   const [error, setError]       = useState(null)
   const [voteThresh, setVoteThresh] = useState(5)
+  const [modalOpen, setModalOpen]   = useState(false)
 
   // Interval / FPS (linked — single source of truth is intervalMs)
   const [intervalMs, setIntervalMs]         = useState(500)   // 2 fps default
@@ -115,6 +116,9 @@ export default function OCRPanel({ onComplete }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Server error')
       setResult({ ...data, mode: 'image' })
+      if (data.annotated_image) {
+        setPreview(data.annotated_image)
+      }
     } catch (err) {
       setError(err.message.includes('Failed to fetch')
         ? 'Cannot reach OCR server on port 5000 — make sure it is running.'
@@ -281,9 +285,20 @@ export default function OCRPanel({ onComplete }) {
 
           {/* image preview */}
           {activeTab === 'image' && preview && (
-            <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+            <div 
+              onClick={() => setModalOpen(true)}
+              style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${BORDER}`, cursor: 'pointer', position: 'relative' }}
+              title="Click to expand"
+            >
               <img src={preview} alt="preview"
                 style={{ width: '100%', maxHeight: 180, objectFit: 'contain', display: 'block', background: '#000' }} />
+              <div style={{
+                position: 'absolute', bottom: 8, right: 8, background: 'rgba(15, 23, 42, 0.75)',
+                borderRadius: 4, padding: '3px 8px', color: '#FFF', fontSize: 10, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 4, border: '1px solid rgba(255, 255, 255, 0.15)'
+              }}>
+                🔍 Expand View
+              </div>
             </div>
           )}
 
@@ -402,13 +417,27 @@ export default function OCRPanel({ onComplete }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: .5 }}>
                   Current Frame
                 </div>
-                <div style={{
-                  width: '100%', aspectRatio: '16/9', background: '#0F172A', borderRadius: 6, overflow: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
+                <div 
+                  onClick={() => liveThumb && setModalOpen(true)}
+                  style={{
+                    width: '100%', aspectRatio: '16/9', background: '#0F172A', borderRadius: 6, overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: liveThumb ? 'pointer' : 'default', position: 'relative'
+                  }}
+                  title={liveThumb ? "Click to expand" : ""}
+                >
                   {liveThumb
-                    ? <img src={`data:image/jpeg;base64,${liveThumb}`} alt="frame"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <>
+                        <img src={`data:image/jpeg;base64,${liveThumb}`} alt="frame"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{
+                          position: 'absolute', bottom: 6, right: 6, background: 'rgba(15, 23, 42, 0.75)',
+                          borderRadius: 4, padding: '2px 6px', color: '#FFF', fontSize: 9, fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 2, border: '1px solid rgba(255, 255, 255, 0.15)'
+                        }}>
+                          🔍 Expand
+                        </div>
+                      </>
                     : <Spinner color="#475569" />
                   }
                 </div>
@@ -594,7 +623,98 @@ export default function OCRPanel({ onComplete }) {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      {/* ══ BIG MODAL (GIB MODEL) ══ */}
+      {modalOpen && (
+        <div 
+          onClick={() => setModalOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            background: 'rgba(15, 23, 42, 0.85)', zIndex: 9999, display: 'flex',
+            flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: 24, boxSizing: 'border-box', cursor: 'zoom-out',
+            backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          {/* Close Button */}
+          <button 
+            onClick={() => setModalOpen(false)}
+            style={{
+              position: 'absolute', top: 20, right: 20, background: '#EF4444',
+              color: '#FFF', border: 'none', borderRadius: '50%', width: 44, height: 44,
+              fontSize: 20, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+              zIndex: 10000
+            }}
+            title="Close View"
+          >
+            ✕
+          </button>
+
+          {/* Modal Content Card */}
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            style={{
+              background: '#0F172A', border: '1px solid #1E293B', borderRadius: 16,
+              padding: 16, display: 'flex', flexDirection: 'column', gap: 14,
+              width: '100%', maxWidth: 900, maxHeight: '90vh', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+              cursor: 'default', animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#F8FAFC', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {activeTab === 'image' ? '🖼️ Bogie Number Detection Zoom' : '🎬 Live Bounding Box Tracking Feed'}
+              </span>
+              {activeTab === 'video' && loading && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: '#2563EB22', color: '#60A5FA', border: '1px solid #2563EB55' }}>
+                  PROCESSING LIVE ON GPU
+                </span>
+              )}
+            </div>
+
+            <div style={{ borderRadius: 8, overflow: 'hidden', background: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '16/9', border: '1px solid #1E293B' }}>
+              {activeTab === 'image' && preview ? (
+                <img 
+                  src={preview} 
+                  alt="Zoomed preview" 
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                />
+              ) : activeTab === 'video' && liveThumb ? (
+                <img 
+                  src={`data:image/jpeg;base64,${liveThumb}`} 
+                  alt="Zoomed live stream" 
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                />
+              ) : (
+                <div style={{ padding: 40, color: '#64748B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <Spinner color="#60A5FA" />
+                  <span style={{ fontSize: 13 }}>Waiting for GPU processing feed...</span>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                {activeTab === 'image' ? 'Green: YOLO Class Detections | Yellow: PaddleOCR Text Extractions' : `Processing Frame: ${framesRead} / ${totalFrames || '?'}`}
+              </span>
+              <button 
+                onClick={() => setModalOpen(false)}
+                style={{
+                  padding: '8px 20px', background: '#334155', color: '#FFF', border: 'none',
+                  borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+      `}</style>
     </div>
   )
 }
